@@ -40,18 +40,27 @@ Each game is its own small app in its own folder. Don't make one big game that d
 ## The first game: Fun With Math (`learning-lab/fun-with-math/`)
 - **Profiles (decided):** the game is meant to be shared, so there are no built-in kids. Anyone can create their own profile: enter a name, pick a picture, and pick a starting level. Creating a profile is an adult task, behind the adult math question.
 - Each kid taps their own picture to start. That picks their level and their coin jar.
-- Little level (about age 4): counting ("how many?"), which group has more, matching a number to dots.
-- Big level (about age 6): adding and taking away, up to 10 first, then up to 20.
+- Little level (about age 4), 4 steps, new kinds open up as they go:
+  - how many? (later also scattered, not in rows) · which side has more / fewer / the same (=) · find the dots for a number
+  - which number is bigger / smaller (🐘 / 🐭) · what number comes next · which number is missing
+  - one more came / one went away · adding up to 5 with pictures · quick look (dice dots for 2 seconds, then 🙈)
+  - picture patterns (AB, AAB, ABB, ABC)
+- Big level (about age 6): adding and taking away, up to 10 first, then up to 20, mixed with:
+  - odd or even (dots lined up in pairs: does one stay alone?)
+  - number patterns (counting by 1, 2, 5, and backwards) and picture patterns (ABC, AABB, ABBC)
+- The same kind of question never comes twice in a row.
+- Geometry: later, as its own game in the Learning Lab (not inside Fun With Math).
 - It gets harder on its own when they keep getting answers right.
 - Every number shows next to the matching number of dots or objects.
 
 ## Coins (pretend money for home rewards, no real money)
-- A coin for each right answer (first try), plus a bonus for finishing a round.
+- Coins per question: 1 if right on the first tap, ½ if right after one wrong tap, 0 after two or more wrong taps. Plus a bonus for finishing a round. Coins can be halves (shown as 12½).
 - Prize list (prices — buying a prize takes the coins out of the jar):
   - 🍦 Ice cream = 100 coins
   - 🎮 Pokémon game = 200 coins
   - 🧱 Lego game = 300 coins
 - Kids see the prize list as pictures after each round, each with a bar filling up with their coins.
+- Each prize's picture can be changed on the parent screen: pick an emoji, type any emoji, or use a photo from the iPad (shrunk and saved on the iPad).
 - Each profile has its own coin jar, saved on the iPad.
 - A parent screen, locked behind an adult math question (like 7 × 8), where a parent spends coins on home rewards and sets prices (for example: ice cream = 10 coins).
 
@@ -59,6 +68,8 @@ Each game is its own small app in its own folder. Don't make one big game that d
 - The sum is on top. Below it is ONE picture of the first number: the ones that stay, and the ones taken away in a red dashed box (red matches the red number being taken away). After a moment the taken-away ones hop and fade with a red ✕, so what's left is easy to count.
 
 ## Decisions log
+- v1.3 (same PR as 1.2): many more kinds of questions for both levels (see above).
+- v1.2: half coin on the second try, none after that; prize pictures can be any emoji or a photo.
 - v1.1: voice in Hebrew (parent screens stay English); prize list 100/200/300 as prices; clearer take-away picture.
 - Game name: **fun-with-math** → https://itzikshamli.github.io/shamli-lab/learning-lab/fun-with-math/
 - Kid pictures: each user creates their own profile (name + picture), so the game can be shared.

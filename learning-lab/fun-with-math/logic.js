@@ -7,40 +7,63 @@
   // ---------- Settings ----------
   var ROUND_LENGTH = 10;        // questions per round
   var COIN_PER_RIGHT = 1;       // coin for a right answer on the first try
+  // Coins for a right answer by how many wrong taps came before it:
+  // right away = 1, after one wrong = ½, after two or more wrong = 0.
+  var COINS_BY_WRONG = [1, 0.5, 0];
   var ROUND_BONUS = 3;          // bonus coins for finishing a round
   var LEVEL_UP_STREAK = 5;      // right-first-try in a row to get harder
   var LEVEL_DOWN_MISSES = 3;    // wrong-first-try in a row to get easier
 
   // Each track is a list of stages, easiest first.
+  // `types` may repeat a type to make it come up more often.
+  // Options: addMax (biggest sum for little-kid adding), quickMax (biggest quick-look number),
+  // equal (compare can be "the same"), gap (smallest difference in compare), fewer / smaller
+  // (also ask for the smaller side/number), messy (scattered counting), patterns (picture
+  // pattern kinds), steps (number-pattern steps).
   var TRACKS = {
     little: [
-      { id: 'L1', max: 5,  types: ['count', 'more', 'match'] },
-      { id: 'L2', max: 7,  types: ['count', 'more', 'match'] },
-      { id: 'L3', max: 10, types: ['count', 'more', 'match'] }
+      { id: 'L1', max: 5, gap: 2, patterns: ['AB'],
+        types: ['count', 'count', 'compare', 'match', 'bigger', 'next', 'pattern'] },
+      { id: 'L2', max: 7, gap: 2, equal: true, fewer: true, addMax: 5, quickMax: 4, patterns: ['AB'],
+        types: ['count', 'compare', 'match', 'bigger', 'next', 'pattern', 'change', 'add', 'quick'] },
+      { id: 'L3', max: 10, gap: 2, equal: true, fewer: true, smaller: true, addMax: 5, quickMax: 6,
+        patterns: ['AB', 'AAB', 'ABB'],
+        types: ['count', 'compare', 'match', 'bigger', 'next', 'missing', 'pattern', 'change', 'add', 'quick'] },
+      { id: 'L4', max: 10, gap: 1, equal: true, fewer: true, smaller: true, messy: true, addMax: 5, quickMax: 6,
+        patterns: ['AB', 'AAB', 'ABB', 'ABC'],
+        types: ['count', 'compare', 'match', 'bigger', 'next', 'missing', 'pattern', 'change', 'add', 'quick'] }
     ],
     big: [
-      { id: 'B1', max: 5,  types: ['add'] },
-      { id: 'B2', max: 10, types: ['add'] },
-      { id: 'B3', max: 10, types: ['add', 'sub'] },
-      { id: 'B4', max: 20, types: ['add', 'sub'] }
+      { id: 'B1', max: 5, steps: [1], patterns: ['AB', 'ABB'],
+        types: ['add', 'add', 'add', 'numpattern', 'pattern'] },
+      { id: 'B2', max: 10, steps: [1, 2], patterns: ['ABB', 'ABC'],
+        types: ['add', 'add', 'add', 'parity', 'numpattern', 'pattern'] },
+      { id: 'B3', max: 10, steps: [1, 2, -1], patterns: ['ABC', 'AABB'],
+        types: ['add', 'add', 'sub', 'sub', 'parity', 'numpattern', 'pattern'] },
+      { id: 'B4', max: 20, steps: [2, 5, -1, -2], patterns: ['ABC', 'AABB', 'ABBC'],
+        types: ['add', 'add', 'sub', 'sub', 'parity', 'numpattern', 'pattern'] }
     ]
   };
 
   // `many` is the Hebrew plural, used in the spoken questions.
+  // f: the Hebrew noun is feminine (for "one more came" / "one left").
   var ITEMS = [
     { e: '🍎', many: 'תפוחים' },
     { e: '🍓', many: 'תותים' },
     { e: '⭐', many: 'כוכבים' },
-    { e: '🐞', many: 'חיפושיות' },
+    { e: '🐞', many: 'חיפושיות', f: true },
     { e: '🐟', many: 'דגים' },
     { e: '🎈', many: 'בלונים' },
-    { e: '🍪', many: 'עוגיות' },
+    { e: '🍪', many: 'עוגיות', f: true },
     { e: '🌸', many: 'פרחים' },
     { e: '🐥', many: 'אפרוחים' },
-    { e: '🚗', many: 'מכוניות' },
+    { e: '🚗', many: 'מכוניות', f: true },
     { e: '🦋', many: 'פרפרים' },
-    { e: '🍌', many: 'בננות' }
+    { e: '🍌', many: 'בננות', f: true }
   ];
+
+  // Pictures for patterns: clearly different colors and shapes.
+  var PATTERN_PICS = ['🔴', '🟦', '⭐', '🟢', '🔺', '🍎', '🍌', '🐸', '🌸', '🚗', '🎈', '🟣'];
 
   // Numbers as spoken words, so the voice never has to guess the Hebrew form.
   // NUM: counting form ("שלוש ועוד שתיים"). DOTS: before the feminine noun נקודות.
@@ -111,27 +134,147 @@
     var n = randInt(rng, 1, stage.max);
     return {
       type: 'count', item: item.e, n: n, answer: n,
+      messy: !!stage.messy && rng() < 0.6,
       choices: numberChoices(rng, n, 1, stage.max),
       say: 'כמה ' + item.many + ' יש?',
       key: 'count:' + n
     };
   }
 
-  function makeMore(rng, stage) {
+  // Two groups: which side has more (or fewer)? Later the sides can be the same → "=".
+  function makeCompare(rng, stage) {
     var item = pick(rng, ITEMS);
-    var a = randInt(rng, 1, stage.max);
-    var b;
-    // Make the difference clear for little kids: at least 2 apart when possible.
-    var minGap = stage.max >= 5 ? 2 : 1;
-    var guard = 0;
-    do { b = randInt(rng, 1, stage.max); } while (Math.abs(a - b) < minGap && guard++ < 100);
-    if (a === b) b = a === 1 ? 2 : a - 1;
+    var ask = stage.fewer && rng() < 0.45 ? 'fewer' : 'more';
+    var a = randInt(rng, 1, stage.max), b;
+    var same = stage.equal && rng() < 0.22;
+    if (same) {
+      b = a;
+    } else {
+      var minGap = stage.gap || 2, guard = 0;
+      do { b = randInt(rng, 1, stage.max); } while (Math.abs(a - b) < minGap && guard++ < 100);
+      if (a === b) b = a === 1 ? 2 : a - 1;
+    }
+    var answer = same ? 'same' : ((ask === 'more') === (a > b) ? 'left' : 'right');
+    var say = 'באיזה צד יש ' + (ask === 'more' ? 'יותר ' : 'פחות ') + item.many + '?';
+    if (stage.equal) say += ' ואם יש אותו דבר, לחצו על השווה.';
     return {
-      type: 'more', item: item.e, left: a, right: b,
-      answer: a > b ? 'left' : 'right',
-      choices: ['left', 'right'],
-      say: 'באיזה צד יש יותר ' + item.many + '?',
-      key: 'more:' + a + ':' + b
+      type: 'compare', ask: ask, item: item.e, left: a, right: b, answer: answer,
+      choices: stage.equal ? ['left', 'right', 'same'] : ['left', 'right'],
+      say: say, key: 'compare:' + ask + ':' + a + ':' + b
+    };
+  }
+
+  // Two numbers (with dots): which is bigger / smaller?
+  function makeBigger(rng, stage) {
+    var a = randInt(rng, 1, stage.max), b, guard = 0;
+    do { b = randInt(rng, 1, stage.max); } while (a === b && guard++ < 50);
+    if (a === b) b = a === 1 ? 2 : a - 1;
+    var ask = stage.smaller && rng() < 0.4 ? 'smaller' : 'bigger';
+    return {
+      type: 'bigger', ask: ask, choices: [a, b],
+      answer: ask === 'bigger' ? Math.max(a, b) : Math.min(a, b),
+      say: ask === 'bigger' ? 'איזה מספר גדול יותר?' : 'איזה מספר קטן יותר?',
+      key: 'bigger:' + ask + ':' + a + ':' + b
+    };
+  }
+
+  // Counting up: 2, 3, 4, ? (next) or 2, ?, 4, 5 (missing).
+  function makeSequence(rng, stage, missing) {
+    var start = randInt(rng, 1, stage.max - 3);
+    var seq = [start, start + 1, start + 2, start + 3];
+    var hide = missing ? randInt(rng, 1, 2) : 3;
+    var answer = seq[hide];
+    seq[hide] = null;
+    return {
+      type: missing ? 'missing' : 'next', seq: seq, answer: answer,
+      choices: numberChoices(rng, answer, 1, stage.max),
+      say: missing ? 'איזה מספר חסר?' : 'מה המספר הבא?',
+      key: (missing ? 'missing:' : 'next:') + start + ':' + hide
+    };
+  }
+  function makeNext(rng, stage) { return makeSequence(rng, stage, false); }
+  function makeMissing(rng, stage) { return makeSequence(rng, stage, true); }
+
+  // Number patterns for the big kids: 2, 4, 6, ? or 9, 8, 7, ?
+  function makeNumPattern(rng, stage) {
+    var step = pick(rng, stage.steps || [1]);
+    var lo = step > 0 ? 0 : -3 * step;
+    var hi = step > 0 ? stage.max - 3 * step : stage.max;
+    if (hi < lo) { step = 1; lo = 0; hi = stage.max - 3; }
+    var start = randInt(rng, lo, hi);
+    var seq = [start, start + step, start + 2 * step];
+    var answer = start + 3 * step;
+    var set = [answer];
+    // Good wrong answers: off by one, and "the same step the wrong way".
+    [answer + 1, answer - 1, start + step, answer + step, answer - 2].forEach(function (c) {
+      if (set.length < 3 && c >= 0 && c <= stage.max && set.indexOf(c) === -1 && rng() < 0.7) set.push(c);
+    });
+    var choices = set.length === 3 ? shuffle(rng, set) : numberChoices(rng, answer, 0, stage.max);
+    return {
+      type: 'numpattern', step: step, seq: seq.concat([null]), answer: answer, choices: choices,
+      say: 'מה המספר הבא?',
+      key: 'numpattern:' + start + ':' + step
+    };
+  }
+
+  // A few of the same thing; then one more comes, or one goes away. How many now?
+  function makeChange(rng, stage) {
+    var item = pick(rng, ITEMS);
+    var max = Math.min(stage.max, 6);
+    var dir = rng() < 0.5 ? 1 : -1;
+    var n = dir > 0 ? randInt(rng, 1, max - 1) : randInt(rng, 2, max);
+    var answer = n + dir;
+    var say = dir > 0
+      ? (item.f ? 'עוד אחת הגיעה! ' : 'עוד אחד הגיע! ') + 'כמה ' + item.many + ' יש עכשיו?'
+      : (item.f ? 'אחת הלכה! ' : 'אחד הלך! ') + 'כמה ' + item.many + ' נשארו?';
+    return {
+      type: 'change', item: item.e, n: n, dir: dir, answer: answer,
+      choices: numberChoices(rng, answer, 1, max),
+      say: say, key: 'change:' + n + ':' + dir
+    };
+  }
+
+  // Dots shown like a dice face for a moment, then covered: how many did you see?
+  function makeQuick(rng, stage) {
+    var max = Math.min(6, stage.quickMax || 6);
+    var n = randInt(rng, 1, max);
+    return {
+      type: 'quick', n: n, answer: n,
+      choices: numberChoices(rng, n, 1, Math.max(max, 4)),
+      say: 'הסתכלו טוב! כמה נקודות ראיתם?',
+      key: 'quick:' + n
+    };
+  }
+
+  // Picture patterns: 🔴🟦🔴🟦 ? (AB), AAB, ABB, ABC, AABB, ABBC
+  function makePattern(rng, stage) {
+    var kind = pick(rng, stage.patterns || ['AB']);
+    var pics = shuffle(rng, PATTERN_PICS).slice(0, 4);
+    var unit = kind.split('').map(function (ch) { return pics[ch.charCodeAt(0) - 65]; });
+    var shown = Math.min(9, unit.length * 2 + randInt(rng, 0, unit.length - 1)); // fits the screen
+    var seq = [];
+    for (var i = 0; i < shown; i++) seq.push(unit[i % unit.length]);
+    var answer = unit[shown % unit.length];
+    // Choices: the pictures in the pattern, plus another one if the pattern only has two.
+    var opts = [];
+    unit.forEach(function (u) { if (opts.indexOf(u) === -1) opts.push(u); });
+    if (opts.length < 3) opts.push(pics[3]);
+    return {
+      type: 'pattern', kind: kind, seq: seq, answer: answer,
+      choices: shuffle(rng, opts.slice(0, 3).indexOf(answer) === -1 ? [answer].concat(opts.slice(0, 2)) : opts.slice(0, 3)),
+      say: 'מה בא אחר כך?',
+      key: 'pattern:' + seq.join('')
+    };
+  }
+
+  // Odd or even: the dots are lined up in pairs, so you can see if one is left alone.
+  function makeParity(rng, stage) {
+    var n = randInt(rng, 1, stage.max);
+    return {
+      type: 'parity', n: n, answer: n % 2 === 0 ? 'even' : 'odd',
+      choices: ['even', 'odd'],
+      say: 'האם ' + numWord(n) + ' זוגי או אי-זוגי?',
+      key: 'parity:' + n
     };
   }
 
@@ -146,14 +289,15 @@
   }
 
   function makeAdd(rng, stage) {
-    var sum = randInt(rng, 2, stage.max);
+    var max = stage.addMax || stage.max;
+    var sum = randInt(rng, 2, max);
     // Bias toward bigger sums at the 20 stage so it actually practices teens.
-    if (stage.max > 10 && rng() < 0.6) sum = randInt(rng, 11, stage.max);
+    if (max > 10 && rng() < 0.6) sum = randInt(rng, 11, max);
     var a = randInt(rng, 1, sum - 1);
     var b = sum - a;
     return {
       type: 'add', a: a, b: b, op: '+', answer: sum,
-      choices: numberChoices(rng, sum, 0, stage.max),
+      choices: numberChoices(rng, sum, stage.addMax ? 1 : 0, max),
       say: numWord(a) + ' ועוד ' + numWord(b) + '. כמה זה ביחד?',
       key: 'add:' + a + ':' + b
     };
@@ -172,7 +316,11 @@
     };
   }
 
-  var MAKERS = { count: makeCount, more: makeMore, match: makeMatch, add: makeAdd, sub: makeSub };
+  var MAKERS = {
+    count: makeCount, compare: makeCompare, match: makeMatch, add: makeAdd, sub: makeSub,
+    bigger: makeBigger, next: makeNext, missing: makeMissing, numpattern: makeNumPattern,
+    change: makeChange, quick: makeQuick, pattern: makePattern, parity: makeParity
+  };
 
   function getStage(profile) {
     var track = TRACKS[profile.level] || TRACKS.little;
@@ -180,13 +328,16 @@
     return track[i];
   }
 
-  // Make the next question, never the exact same one twice in a row.
+  // Make the next question: never the same kind twice in a row (so it stays varied).
   function nextQuestion(profile, prevKey, rng) {
     rng = rng || Math.random;
     var stage = getStage(profile);
+    var prevType = prevKey ? String(prevKey).split(':')[0] : null;
+    var types = stage.types.filter(function (t) { return t !== prevType; });
+    if (!types.length) types = stage.types;
     var q, guard = 0;
     do {
-      var type = pick(rng, stage.types);
+      var type = pick(rng, types);
       q = MAKERS[type](rng, stage);
     } while (q.key === prevKey && guard++ < 20);
     q.stage = stage.id;
@@ -261,6 +412,8 @@
     }
     out.rewards.forEach(function (r) {
       r.price = Math.max(1, Math.min(9999, r.price | 0));
+      r.emoji = typeof r.emoji === 'string' && r.emoji.trim() ? r.emoji.trim().slice(0, 16) : '🎁';
+      r.image = cleanImage(r.image);
     });
     out.profiles.forEach(function (p) {
       p.name = String(p.name || '').slice(0, 20);
@@ -269,9 +422,31 @@
       var track = TRACKS[p.level];
       p.stage = Math.max(0, Math.min(track.length - 1, p.stage | 0));
       p.streak = p.streak | 0; p.misses = p.misses | 0;
-      p.coins = Math.max(0, p.coins | 0);
+      p.coins = Math.max(0, halves(p.coins));
     });
     return out;
+  }
+
+  function halves(x) { return Math.round((Number(x) || 0) * 2) / 2; }
+
+  function coinsForAnswer(wrongTaps) {
+    wrongTaps = Math.max(0, wrongTaps | 0);
+    return COINS_BY_WRONG[Math.min(wrongTaps, COINS_BY_WRONG.length - 1)];
+  }
+
+  // 12.5 → "12½", 0.5 → "½", 3 → "3"
+  function formatCoins(n) {
+    n = halves(n);
+    var whole = Math.floor(n);
+    var half = n - whole >= 0.5;
+    if (!half) return String(whole);
+    return (whole ? String(whole) : '') + '½';
+  }
+
+  // A reward's picture: an emoji, or a small photo saved as a data URL.
+  var MAX_IMAGE_CHARS = 150000;
+  function cleanImage(img) {
+    return typeof img === 'string' && /^data:image\/(jpeg|png|webp);base64,/.test(img) && img.length <= MAX_IMAGE_CHARS ? img : null;
   }
 
   function newId(prefix) {
@@ -279,7 +454,7 @@
   }
 
   function addCoins(data, profile, delta, reason) {
-    profile.coins = Math.max(0, (profile.coins | 0) + delta);
+    profile.coins = Math.max(0, halves(halves(profile.coins) + delta));
     data.log.push({ t: Date.now(), profileId: profile.id, delta: delta, reason: reason || '' });
     if (data.log.length > 300) data.log = data.log.slice(-300);
     return profile.coins;
@@ -334,9 +509,11 @@
   var api = {
     ROUND_LENGTH: ROUND_LENGTH, COIN_PER_RIGHT: COIN_PER_RIGHT, ROUND_BONUS: ROUND_BONUS,
     LEVEL_UP_STREAK: LEVEL_UP_STREAK, LEVEL_DOWN_MISSES: LEVEL_DOWN_MISSES,
-    TRACKS: TRACKS, ITEMS: ITEMS, AVATARS: AVATARS, PRAISE: PRAISE, RETRY: RETRY, SAY: SAY,
+    TRACKS: TRACKS, ITEMS: ITEMS, PATTERN_PICS: PATTERN_PICS, MAKERS: MAKERS, AVATARS: AVATARS, PRAISE: PRAISE, RETRY: RETRY, SAY: SAY,
     STORAGE_KEY: STORAGE_KEY, DATA_VERSION: DATA_VERSION, VOICE_LANG: VOICE_LANG,
     numWord: numWord, dotsPhrase: dotsPhrase, defaultRewards: defaultRewards,
+    COINS_BY_WRONG: COINS_BY_WRONG, coinsForAnswer: coinsForAnswer, formatCoins: formatCoins, halves: halves,
+    cleanImage: cleanImage, MAX_IMAGE_CHARS: MAX_IMAGE_CHARS,
     randInt: randInt, pick: pick, shuffle: shuffle, numberChoices: numberChoices,
     nextQuestion: nextQuestion, getStage: getStage, recordFirstTry: recordFirstTry,
     defaultData: defaultData, normalizeData: normalizeData, newId: newId, addCoins: addCoins,

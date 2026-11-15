@@ -22,22 +22,66 @@ test('every question is valid, on every track and stage', () => {
     L.TRACKS[level].forEach((stage, i) => {
       const profile = { level, stage: i };
       const rng = rngFrom(1000 + i);
-      let prev = null;
+      let prev = null, prevType = null;
       for (let k = 0; k < 3000; k++) {
         const q = L.nextQuestion(profile, prev, rng);
+        assert.notStrictEqual(q.type, prevType, 'same kind twice in a row');
         assert.ok(stage.types.includes(q.type), 'type ' + q.type + ' not allowed in ' + stage.id);
         assert.ok(q.say && typeof q.say === 'string', 'needs something to say');
         assert.ok(q.choices.includes(q.answer), 'answer must be a choice');
         assert.strictEqual(new Set(q.choices).size, q.choices.length, 'choices must differ');
         assert.notStrictEqual(q.key, prev, 'same question twice in a row');
-        if (q.type === 'more') {
-          assert.notStrictEqual(q.left, q.right);
+        if (q.type === 'compare') {
           assert.ok(q.left >= 1 && q.left <= stage.max && q.right >= 1 && q.right <= stage.max);
-          assert.strictEqual(q.answer, q.left > q.right ? 'left' : 'right');
+          if (q.left === q.right) { assert.ok(stage.equal); assert.strictEqual(q.answer, 'same'); }
+          else {
+            const moreSide = q.left > q.right ? 'left' : 'right';
+            assert.strictEqual(q.answer, q.ask === 'more' ? moreSide : (moreSide === 'left' ? 'right' : 'left'));
+            assert.ok(Math.abs(q.left - q.right) >= (stage.gap || 2) || stage.max < 3);
+          }
+          assert.strictEqual(q.choices.length, stage.equal ? 3 : 2);
+          if (q.ask === 'fewer') assert.ok(stage.fewer);
+        } else if (q.type === 'parity') {
+          assert.deepStrictEqual(q.choices, ['even', 'odd']);
+          assert.strictEqual(q.answer, q.n % 2 ? 'odd' : 'even');
+          assert.ok(q.n >= 1 && q.n <= stage.max);
+        } else if (q.type === 'pattern') {
+          assert.strictEqual(q.choices.length, 3);
+          assert.ok(q.seq.length >= 4 && q.seq.length <= 9);
+          const unitLen = q.kind.length;
+          // The answer really continues the pattern.
+          const unit = q.seq.slice(0, unitLen);
+          assert.strictEqual(q.answer, unit[q.seq.length % unitLen]);
+          q.seq.forEach((p, i) => assert.strictEqual(p, unit[i % unitLen]));
+          assert.ok(stage.patterns.includes(q.kind));
+        } else if (q.type === 'bigger') {
+          assert.strictEqual(q.choices.length, 2);
+          assert.notStrictEqual(q.choices[0], q.choices[1]);
+          assert.strictEqual(q.answer, q.ask === 'bigger' ? Math.max(...q.choices) : Math.min(...q.choices));
+          q.choices.forEach((c) => assert.ok(c >= 1 && c <= stage.max));
         } else {
           assert.strictEqual(q.choices.length, 3);
-          q.choices.forEach((c) => assert.ok(Number.isInteger(c) && c >= 0 && c <= stage.max, 'choice out of range: ' + c));
+          q.choices.forEach((c) => assert.ok(Number.isInteger(c) && c >= 0 && c <= stage.max, 'choice out of range: ' + c + ' ' + q.type));
         }
+        if (q.type === 'next' || q.type === 'missing') {
+          const known = q.seq.filter((x) => x !== null);
+          assert.strictEqual(known.length, 3);
+          const full = q.seq.map((x) => x === null ? q.answer : x);
+          full.forEach((x, i) => { if (i) assert.strictEqual(x, full[i - 1] + 1); });
+          assert.ok(full[0] >= 1 && full[3] <= stage.max);
+          assert.strictEqual(q.seq.indexOf(null) === 3, q.type === 'next');
+        }
+        if (q.type === 'numpattern') {
+          const full = q.seq.slice(0, 3).concat([q.answer]);
+          full.forEach((x, i) => { assert.ok(x >= 0 && x <= stage.max); if (i) assert.strictEqual(x - full[i - 1], q.step); });
+          assert.ok(stage.steps.includes(q.step) || q.step === 1);
+        }
+        if (q.type === 'change') {
+          assert.strictEqual(q.answer, q.n + q.dir);
+          assert.ok(q.answer >= 1 && q.n >= 1);
+        }
+        if (q.type === 'quick') assert.ok(q.n >= 1 && q.n <= Math.min(6, stage.quickMax));
+        if (q.type === 'add' && stage.addMax) assert.ok(q.answer <= stage.addMax);
         if (q.type === 'count' || q.type === 'match') {
           assert.ok(q.n >= 1 && q.n <= stage.max);
           assert.strictEqual(q.answer, q.n);
@@ -47,6 +91,7 @@ test('every question is valid, on every track and stage', () => {
           assert.strictEqual(q.answer, q.a + q.b);
           assert.ok(q.a >= 1 && q.b >= 1 && q.answer <= stage.max);
         }
+        prevType = q.type;
         if (q.type === 'sub') {
           assert.strictEqual(q.answer, q.a - q.b);
           assert.ok(q.b >= 1 && q.answer >= 1 && q.a <= stage.max);
@@ -63,17 +108,19 @@ test('all question types show up', () => {
   for (const level of Object.keys(L.TRACKS)) {
     L.TRACKS[level].forEach((s, i) => { for (let k = 0; k < 200; k++) seen.add(L.nextQuestion({ level, stage: i }, null, rng).type); });
   }
-  assert.deepStrictEqual([...seen].sort(), ['add', 'count', 'match', 'more', 'sub']);
+  assert.deepStrictEqual([...seen].sort(), Object.keys(L.MAKERS).sort());
 });
 
 test('the 20 stage really practices numbers over 10', () => {
   const rng = rngFrom(3);
-  let big = 0;
-  for (let k = 0; k < 500; k++) {
+  let big = 0, sums = 0;
+  for (let k = 0; k < 1000; k++) {
     const q = L.nextQuestion({ level: 'big', stage: 3 }, null, rng);
+    if (q.type !== 'add' && q.type !== 'sub') continue;
+    sums++;
     if (Math.max(q.a, q.answer) > 10) big++;
   }
-  assert.ok(big > 250, 'only ' + big + ' of 500 went past 10');
+  assert.ok(big > sums / 2, 'only ' + big + ' of ' + sums + ' went past 10');
 });
 
 test('gets harder after a streak, easier after misses, stays in bounds', () => {
@@ -145,6 +192,36 @@ test('coins add up and never go below zero', () => {
   L.addCoins(d, p, -10, 'z');
   assert.strictEqual(p.coins, 0);
   assert.strictEqual(d.log.length, 3);
+});
+
+test('coins: 1 right away, ½ after one wrong, 0 after two or more', () => {
+  assert.strictEqual(L.coinsForAnswer(0), 1);
+  assert.strictEqual(L.coinsForAnswer(1), 0.5);
+  assert.strictEqual(L.coinsForAnswer(2), 0);
+  assert.strictEqual(L.coinsForAnswer(5), 0);
+  const d = L.defaultData();
+  const p = { id: 'p', coins: 0 };
+  L.addCoins(d, p, 0.5, 'x'); L.addCoins(d, p, 0.5, 'x'); L.addCoins(d, p, 0.5, 'x');
+  assert.strictEqual(p.coins, 1.5);
+  assert.strictEqual(L.formatCoins(p.coins), '1½');
+  assert.strictEqual(L.formatCoins(0.5), '½');
+  assert.strictEqual(L.formatCoins(12), '12');
+  assert.strictEqual(L.formatCoins(0), '0');
+  L.addCoins(d, p, -1, 'x');
+  assert.strictEqual(p.coins, 0.5);
+  assert.strictEqual(L.normalizeData({ version: 2, profiles: [{ id: 'a', coins: 7.5 }] }).profiles[0].coins, 7.5, 'half coins survive saving');
+});
+
+test('reward pictures: emoji or a small photo, junk is dropped', () => {
+  const ok = 'data:image/jpeg;base64,' + 'A'.repeat(100);
+  const d = L.normalizeData({ version: 2, rewards: [
+    { id: 'a', name: 'A', price: 5, emoji: '🚲', image: ok },
+    { id: 'b', name: 'B', price: 5, emoji: '', image: 'javascript:alert(1)' },
+    { id: 'c', name: 'C', price: 5, image: 'data:image/jpeg;base64,' + 'A'.repeat(L.MAX_IMAGE_CHARS) }] });
+  assert.strictEqual(d.rewards[0].image, ok);
+  assert.strictEqual(d.rewards[1].image, null);
+  assert.strictEqual(d.rewards[1].emoji, '🎁');
+  assert.strictEqual(d.rewards[2].image, null, 'too big');
 });
 
 test('grown-up question is hard for a little kid', () => {

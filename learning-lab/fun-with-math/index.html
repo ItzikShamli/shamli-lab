@@ -75,10 +75,10 @@
       <button id="btn-add-profile" class="text-btn">+ Add a player</button>
 
       <h2>Rewards</h2>
-      <p class="hint">Set a price in coins. Kids see the prizes as pictures after each round. Tap a player's "Spend" button to buy one.</p>
+      <p class="hint">Set a price in coins. Kids see the prizes as pictures after each round. Tap a prize's picture to change it (pick an emoji or a photo). Tap a player's "Spend" button to buy one.</p>
       <div id="parent-rewards"></div>
       <div class="reward-add">
-        <input id="new-reward-emoji" maxlength="4" placeholder="🎁" aria-label="Reward picture">
+        <button id="new-reward-icon" class="icon-btn" aria-label="Choose a picture"><span class="ricon icon-btn-pic">🎁</span></button>
         <input id="new-reward-name" maxlength="30" placeholder="Reward name" aria-label="Reward name">
         <input id="new-reward-price" type="number" inputmode="numeric" min="1" max="999" placeholder="Coins" aria-label="Price">
         <button id="btn-add-reward" class="text-btn">Add</button>
@@ -118,6 +118,26 @@
       <button id="btn-edit-save" class="text-btn primary wide">Save</button>
     </div>
   </section>
+
+  <!-- Pick a reward picture -->
+  <div id="icon-sheet" class="sheet hidden">
+    <div class="sheet-box">
+      <div class="parent-head">
+        <h2>Choose a picture</h2>
+        <button id="icon-cancel" class="text-btn">Cancel</button>
+      </div>
+      <div class="icon-own-row">
+        <button id="icon-photo-btn" class="text-btn primary">📷 Choose a photo</button>
+        <input id="icon-photo" type="file" accept="image/*" class="hidden">
+        <span class="hint">A real photo of the prize is easy for kids to recognize.</span>
+      </div>
+      <div class="icon-own-row">
+        <input id="icon-own" maxlength="16" placeholder="Or type any emoji" aria-label="Your own emoji">
+        <button id="icon-own-use" class="text-btn">Use</button>
+      </div>
+      <div id="icon-grid" class="icon-grid"></div>
+    </div>
+  </div>
 
   <!-- Spend sheet -->
   <div id="spend-sheet" class="sheet hidden">
