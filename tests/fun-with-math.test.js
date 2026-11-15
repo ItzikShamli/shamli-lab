@@ -1,0 +1,164 @@
+// Run with: node tests/fun-with-math.test.js   (plain Node, no npm needed)
+'use strict';
+const assert = require('assert');
+const fs = require('fs');
+const path = require('path');
+const L = require('../learning-lab/fun-with-math/logic.js');
+
+let passed = 0;
+function test(name, fn) {
+  try { fn(); passed++; console.log('ok   ' + name); }
+  catch (e) { console.error('FAIL ' + name + '\n     ' + e.message); process.exitCode = 1; }
+}
+
+// Seeded random so failures can be reproduced.
+function rngFrom(seed) {
+  let s = seed >>> 0;
+  return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; };
+}
+
+test('every question is valid, on every track and stage', () => {
+  for (const level of Object.keys(L.TRACKS)) {
+    L.TRACKS[level].forEach((stage, i) => {
+      const profile = { level, stage: i };
+      const rng = rngFrom(1000 + i);
+      let prev = null;
+      for (let k = 0; k < 3000; k++) {
+        const q = L.nextQuestion(profile, prev, rng);
+        assert.ok(stage.types.includes(q.type), 'type ' + q.type + ' not allowed in ' + stage.id);
+        assert.ok(q.say && typeof q.say === 'string', 'needs something to say');
+        assert.ok(q.choices.includes(q.answer), 'answer must be a choice');
+        assert.strictEqual(new Set(q.choices).size, q.choices.length, 'choices must differ');
+        assert.notStrictEqual(q.key, prev, 'same question twice in a row');
+        if (q.type === 'more') {
+          assert.notStrictEqual(q.left, q.right);
+          assert.ok(q.left >= 1 && q.left <= stage.max && q.right >= 1 && q.right <= stage.max);
+          assert.strictEqual(q.answer, q.left > q.right ? 'left' : 'right');
+        } else {
+          assert.strictEqual(q.choices.length, 3);
+          q.choices.forEach((c) => assert.ok(Number.isInteger(c) && c >= 0 && c <= stage.max, 'choice out of range: ' + c));
+        }
+        if (q.type === 'count' || q.type === 'match') {
+          assert.ok(q.n >= 1 && q.n <= stage.max);
+          assert.strictEqual(q.answer, q.n);
+          q.choices.forEach((c) => assert.ok(c >= 1));
+        }
+        if (q.type === 'add') {
+          assert.strictEqual(q.answer, q.a + q.b);
+          assert.ok(q.a >= 1 && q.b >= 1 && q.answer <= stage.max);
+        }
+        if (q.type === 'sub') {
+          assert.strictEqual(q.answer, q.a - q.b);
+          assert.ok(q.b >= 1 && q.answer >= 1 && q.a <= stage.max);
+        }
+        prev = q.key;
+      }
+    });
+  }
+});
+
+test('all question types show up', () => {
+  const seen = new Set();
+  const rng = rngFrom(7);
+  for (const level of Object.keys(L.TRACKS)) {
+    L.TRACKS[level].forEach((s, i) => { for (let k = 0; k < 200; k++) seen.add(L.nextQuestion({ level, stage: i }, null, rng).type); });
+  }
+  assert.deepStrictEqual([...seen].sort(), ['add', 'count', 'match', 'more', 'sub']);
+});
+
+test('the 20 stage really practices numbers over 10', () => {
+  const rng = rngFrom(3);
+  let big = 0;
+  for (let k = 0; k < 500; k++) {
+    const q = L.nextQuestion({ level: 'big', stage: 3 }, null, rng);
+    if (Math.max(q.a, q.answer) > 10) big++;
+  }
+  assert.ok(big > 250, 'only ' + big + ' of 500 went past 10');
+});
+
+test('gets harder after a streak, easier after misses, stays in bounds', () => {
+  const p = { level: 'big', stage: 0, streak: 0, misses: 0 };
+  for (let i = 0; i < L.LEVEL_UP_STREAK - 1; i++) assert.strictEqual(L.recordFirstTry(p, true), null);
+  assert.strictEqual(L.recordFirstTry(p, true), 'up');
+  assert.strictEqual(p.stage, 1);
+  for (let i = 0; i < L.LEVEL_DOWN_MISSES - 1; i++) assert.strictEqual(L.recordFirstTry(p, false), null);
+  assert.strictEqual(L.recordFirstTry(p, false), 'down');
+  assert.strictEqual(p.stage, 0);
+  for (let i = 0; i < 10; i++) L.recordFirstTry(p, false);
+  assert.strictEqual(p.stage, 0, 'never below the first stage');
+  for (let i = 0; i < 100; i++) L.recordFirstTry(p, true);
+  assert.strictEqual(p.stage, L.TRACKS.big.length - 1, 'never past the last stage');
+  // A wrong answer breaks the streak.
+  const q = { level: 'little', stage: 0 };
+  for (let i = 0; i < 4; i++) L.recordFirstTry(q, true);
+  L.recordFirstTry(q, false);
+  for (let i = 0; i < 4; i++) assert.strictEqual(L.recordFirstTry(q, true), null);
+});
+
+test('saved data is repaired safely', () => {
+  const d = L.normalizeData({ profiles: [{ id: 'a', name: 'X', level: 'weird', stage: 99, coins: -5 }, null, { name: 'no id' }] });
+  assert.strictEqual(d.profiles.length, 1);
+  assert.strictEqual(d.profiles[0].level, 'little');
+  assert.strictEqual(d.profiles[0].stage, L.TRACKS.little.length - 1);
+  assert.strictEqual(d.profiles[0].coins, 0);
+  assert.ok(d.rewards.length > 0, 'default rewards kept');
+  assert.deepStrictEqual(L.normalizeData('garbage').profiles, []);
+  const ice = L.defaultData().rewards.find((r) => r.name === 'Ice cream');
+  assert.strictEqual(ice.price, 10);
+});
+
+test('coins add up and never go below zero', () => {
+  const d = L.defaultData();
+  const p = { id: 'p1', coins: 0 };
+  L.addCoins(d, p, 5, 'x');
+  L.addCoins(d, p, -3, 'y');
+  assert.strictEqual(p.coins, 2);
+  L.addCoins(d, p, -10, 'z');
+  assert.strictEqual(p.coins, 0);
+  assert.strictEqual(d.log.length, 3);
+});
+
+test('grown-up question is hard for a little kid', () => {
+  const rng = rngFrom(9);
+  for (let i = 0; i < 100; i++) {
+    const g = L.adultQuestion(rng);
+    assert.ok(g.a >= 6 && g.a <= 9 && g.b >= 6 && g.b <= 9 && g.answer === g.a * g.b);
+  }
+});
+
+test('voice choice prefers Premium/Enhanced English and skips novelty voices', () => {
+  const voices = [
+    { name: 'Bubbles', lang: 'en-US', voiceURI: 'com.apple.speech.synthesis.voice.Bubbles' },
+    { name: 'Thomas', lang: 'fr-FR', voiceURI: 'fr' },
+    { name: 'Samantha', lang: 'en-US', voiceURI: 'com.apple.voice.compact.en-US.Samantha' },
+    { name: 'Samantha (Enhanced)', lang: 'en-US', voiceURI: 'com.apple.voice.enhanced.en-US.Samantha' },
+    { name: 'Ava (Premium)', lang: 'en-US', voiceURI: 'com.apple.voice.premium.en-US.Ava' },
+    { name: 'Daniel', lang: 'en_GB', voiceURI: 'com.apple.voice.compact.en-GB.Daniel' }
+  ];
+  assert.strictEqual(L.pickVoice(voices).name, 'Ava (Premium)');
+  assert.strictEqual(L.pickVoice(voices.slice(0, 4)).name, 'Samantha (Enhanced)');
+  assert.strictEqual(L.pickVoice(voices.slice(0, 3)).name, 'Samantha');
+  assert.strictEqual(L.pickVoice(voices, voices[5].voiceURI).name, 'Daniel', 'saved choice wins');
+  assert.strictEqual(L.pickVoice(voices.slice(0, 2)), null);
+  assert.ok(!L.englishVoices(voices).some((v) => v.name === 'Bubbles' || v.lang === 'fr-FR'));
+});
+
+test('app version matches the service worker cache version', () => {
+  const dir = path.join(__dirname, '../learning-lab/fun-with-math');
+  const app = fs.readFileSync(path.join(dir, 'app.js'), 'utf8').match(/APP_VERSION = '([^']+)'/)[1];
+  const sw = fs.readFileSync(path.join(dir, 'sw.js'), 'utf8').match(/CACHE_VERSION = '([^']+)'/)[1];
+  assert.strictEqual(app, sw);
+});
+
+test('every file the service worker caches exists', () => {
+  const dir = path.join(__dirname, '../learning-lab/fun-with-math');
+  const sw = fs.readFileSync(path.join(dir, 'sw.js'), 'utf8');
+  const list = JSON.parse(sw.match(/const FILES = (\[[\s\S]*?\]);/)[1].replace(/'/g, '"'));
+  list.filter((f) => f !== './').forEach((f) => assert.ok(fs.existsSync(path.join(dir, f)), 'missing ' + f));
+  // ...and every local file the page loads is cached.
+  const html = fs.readFileSync(path.join(dir, 'index.html'), 'utf8');
+  const refs = [...html.matchAll(/(?:src|href)="([^"]+)"/g)].map((m) => m[1]).filter((u) => !/^https?:|^#/.test(u));
+  refs.forEach((r) => assert.ok(list.includes('./' + r), 'not cached for offline: ' + r));
+});
+
+console.log('\n' + passed + ' tests passed' + (process.exitCode ? ', some FAILED' : ''));

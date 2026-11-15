@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <title>Fun With Math</title>
+  <meta name="theme-color" content="#7cc6fe">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Fun Math">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="icon" href="icons/icon-192.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- 1. Start: one big play button (unlocks sound on iPad) -->
+  <section id="screen-start" class="screen active">
+    <button id="btn-start" class="big-play" aria-label="Play">▶</button>
+  </section>
+
+  <!-- 2. Who is playing? -->
+  <section id="screen-profiles" class="screen">
+    <div id="profile-grid" class="profile-grid"></div>
+    <button id="btn-parent" class="corner-btn" aria-label="Grown-ups">⚙️</button>
+  </section>
+
+  <!-- 3. The game -->
+  <section id="screen-game" class="screen">
+    <div class="topbar">
+      <button id="btn-home" class="round-btn" aria-label="Home">🏠</button>
+      <div id="who" class="who"></div>
+      <div id="progress" class="progress"></div>
+      <button id="btn-say" class="round-btn speaker" aria-label="Say it again">🔊</button>
+      <div id="jar" class="jar" aria-label="Coins"><span class="coin"></span><span id="jar-count">0</span></div>
+    </div>
+    <div id="question" class="question"></div>
+    <div id="answers" class="answers"></div>
+  </section>
+
+  <!-- 4. End of round -->
+  <section id="screen-done" class="screen">
+    <div class="done-box">
+      <div class="trophy">🏆</div>
+      <div id="done-coins" class="done-coins"></div>
+      <div class="done-buttons">
+        <button id="btn-again" class="big-btn green" aria-label="Play again">▶</button>
+        <button id="btn-done-home" class="big-btn blue" aria-label="Home">🏠</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5. Grown-up gate -->
+  <section id="screen-gate" class="screen adult">
+    <div class="gate-box">
+      <p class="gate-title">Grown-ups only</p>
+      <p id="gate-q" class="gate-q"></p>
+      <div id="gate-display" class="gate-display"></div>
+      <div id="gate-pad" class="gate-pad"></div>
+      <button id="btn-gate-cancel" class="text-btn">Cancel</button>
+    </div>
+  </section>
+
+  <!-- 6. Parent screen -->
+  <section id="screen-parent" class="screen adult scroll">
+    <div class="parent-wrap">
+      <header class="parent-head">
+        <h1>Parent screen</h1>
+        <button id="btn-parent-close" class="text-btn primary">Done</button>
+      </header>
+      <h2>Players</h2>
+      <div id="parent-profiles"></div>
+      <button id="btn-add-profile" class="text-btn">+ Add a player</button>
+
+      <h2>Rewards</h2>
+      <p class="hint">Set a price in coins. Tap a player's "Spend" button to buy a reward.</p>
+      <div id="parent-rewards"></div>
+      <div class="reward-add">
+        <input id="new-reward-emoji" maxlength="4" placeholder="🎁" aria-label="Reward picture">
+        <input id="new-reward-name" maxlength="30" placeholder="Reward name" aria-label="Reward name">
+        <input id="new-reward-price" type="number" inputmode="numeric" min="1" max="999" placeholder="Coins" aria-label="Price">
+        <button id="btn-add-reward" class="text-btn">Add</button>
+      </div>
+
+      <h2>Voice</h2>
+      <div class="voice-row">
+        <select id="voice-select" aria-label="Voice"></select>
+        <button id="btn-voice-test" class="text-btn">Test</button>
+      </div>
+      <p class="hint">For a nicer voice: Settings → Accessibility → Spoken Content → Voices → English, and download an "Enhanced" or "Premium" voice. Then reopen the game.</p>
+
+      <h2>Recent coins</h2>
+      <div id="parent-log" class="log"></div>
+      <p class="hint version">Version <span id="app-version"></span></p>
+    </div>
+  </section>
+
+  <!-- 7. Add / edit a player -->
+  <section id="screen-profile-edit" class="screen adult scroll">
+    <div class="parent-wrap">
+      <header class="parent-head">
+        <h1 id="edit-title">New player</h1>
+        <button id="btn-edit-cancel" class="text-btn">Cancel</button>
+      </header>
+      <label class="field">Name
+        <input id="edit-name" maxlength="20" autocomplete="off" autocapitalize="words">
+      </label>
+      <p class="field-label">Picture</p>
+      <div id="edit-avatars" class="avatar-pick"></div>
+      <p class="field-label">Level</p>
+      <div class="level-pick">
+        <button data-level="little" class="level-btn">🔵 Little<br><small>About age 4: counting, more, matching</small></button>
+        <button data-level="big" class="level-btn">🟣 Big<br><small>About age 6: adding and taking away</small></button>
+      </div>
+      <button id="btn-edit-save" class="text-btn primary wide">Save</button>
+    </div>
+  </section>
+
+  <!-- Spend sheet -->
+  <div id="spend-sheet" class="sheet hidden">
+    <div class="sheet-box">
+      <h2 id="spend-title"></h2>
+      <div id="spend-list"></div>
+      <button id="btn-spend-close" class="text-btn">Close</button>
+    </div>
+  </div>
+
+  <!-- Turn the iPad sideways -->
+  <div id="rotate" class="rotate" aria-hidden="true"><div class="rotate-ipad">📱</div><div class="rotate-arrow">↻</div></div>
+
+  <div id="fx" class="fx"></div>
+
+  <script src="logic.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
