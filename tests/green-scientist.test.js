@@ -22,7 +22,8 @@ const moduleFiles = [...html.matchAll(/<script src="(modules\/[^"]+)"/g)].map((m
 moduleFiles.forEach((f) => vm.runInContext(fs.readFileSync(path.join(dir, f), 'utf8'), sandbox, { filename: f }));
 
 // Simulation names that sims.js provides.
-const simsSrc = fs.readFileSync(path.join(dir, 'sims.js'), 'utf8');
+const simFiles = [...html.matchAll(/<script src="(sims[^"]*\.js)"/g)].map((m) => m[1]);
+const simsSrc = simFiles.map((f) => fs.readFileSync(path.join(dir, f), 'utf8')).join('\n');
 const SIMS = new Set([...simsSrc.matchAll(/GS\.sim\('([^']+)'/g)].map((m) => m[1]));
 const ARTS = new Set([...simsSrc.matchAll(/GS\.art\.(\w+) =/g)].map((m) => m[1]));
 const WIDGETS = ['sort', 'order', 'match'];
