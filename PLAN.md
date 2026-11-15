@@ -46,12 +46,13 @@ Each game is its own small app in its own folder. Don't make one big game that d
 - Every number shows next to the matching number of dots or objects.
 
 ## Coins (pretend money for home rewards, no real money)
-- A coin for each right answer (first try), plus a bonus for finishing a round.
+- Coins per question: 1 if right on the first tap, ½ if right after one wrong tap, 0 after two or more wrong taps. Plus a bonus for finishing a round. Coins can be halves (shown as 12½).
 - Prize list (prices — buying a prize takes the coins out of the jar):
   - 🍦 Ice cream = 100 coins
   - 🎮 Pokémon game = 200 coins
   - 🧱 Lego game = 300 coins
 - Kids see the prize list as pictures after each round, each with a bar filling up with their coins.
+- Each prize's picture can be changed on the parent screen: pick an emoji, type any emoji, or use a photo from the iPad (shrunk and saved on the iPad).
 - Each profile has its own coin jar, saved on the iPad.
 - A parent screen, locked behind an adult math question (like 7 × 8), where a parent spends coins on home rewards and sets prices (for example: ice cream = 10 coins).
 
@@ -59,6 +60,7 @@ Each game is its own small app in its own folder. Don't make one big game that d
 - The sum is on top. Below it is ONE picture of the first number: the ones that stay, and the ones taken away in a red dashed box (red matches the red number being taken away). After a moment the taken-away ones hop and fade with a red ✕, so what's left is easy to count.
 
 ## Decisions log
+- v1.2: half coin on the second try, none after that; prize pictures can be any emoji or a photo.
 - v1.1: voice in Hebrew (parent screens stay English); prize list 100/200/300 as prices; clearer take-away picture.
 - Game name: **fun-with-math** → https://itzikshamli.github.io/shamli-lab/learning-lab/fun-with-math/
 - Kid pictures: each user creates their own profile (name + picture), so the game can be shared.

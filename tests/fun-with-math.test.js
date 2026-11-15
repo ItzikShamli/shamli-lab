@@ -147,6 +147,36 @@ test('coins add up and never go below zero', () => {
   assert.strictEqual(d.log.length, 3);
 });
 
+test('coins: 1 right away, ½ after one wrong, 0 after two or more', () => {
+  assert.strictEqual(L.coinsForAnswer(0), 1);
+  assert.strictEqual(L.coinsForAnswer(1), 0.5);
+  assert.strictEqual(L.coinsForAnswer(2), 0);
+  assert.strictEqual(L.coinsForAnswer(5), 0);
+  const d = L.defaultData();
+  const p = { id: 'p', coins: 0 };
+  L.addCoins(d, p, 0.5, 'x'); L.addCoins(d, p, 0.5, 'x'); L.addCoins(d, p, 0.5, 'x');
+  assert.strictEqual(p.coins, 1.5);
+  assert.strictEqual(L.formatCoins(p.coins), '1½');
+  assert.strictEqual(L.formatCoins(0.5), '½');
+  assert.strictEqual(L.formatCoins(12), '12');
+  assert.strictEqual(L.formatCoins(0), '0');
+  L.addCoins(d, p, -1, 'x');
+  assert.strictEqual(p.coins, 0.5);
+  assert.strictEqual(L.normalizeData({ version: 2, profiles: [{ id: 'a', coins: 7.5 }] }).profiles[0].coins, 7.5, 'half coins survive saving');
+});
+
+test('reward pictures: emoji or a small photo, junk is dropped', () => {
+  const ok = 'data:image/jpeg;base64,' + 'A'.repeat(100);
+  const d = L.normalizeData({ version: 2, rewards: [
+    { id: 'a', name: 'A', price: 5, emoji: '🚲', image: ok },
+    { id: 'b', name: 'B', price: 5, emoji: '', image: 'javascript:alert(1)' },
+    { id: 'c', name: 'C', price: 5, image: 'data:image/jpeg;base64,' + 'A'.repeat(L.MAX_IMAGE_CHARS) }] });
+  assert.strictEqual(d.rewards[0].image, ok);
+  assert.strictEqual(d.rewards[1].image, null);
+  assert.strictEqual(d.rewards[1].emoji, '🎁');
+  assert.strictEqual(d.rewards[2].image, null, 'too big');
+});
+
 test('grown-up question is hard for a little kid', () => {
   const rng = rngFrom(9);
   for (let i = 0; i < 100; i++) {

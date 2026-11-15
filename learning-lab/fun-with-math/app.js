@@ -3,7 +3,7 @@
   'use strict';
 
   // Keep in sync with CACHE_VERSION in sw.js (tests check this).
-  const APP_VERSION = '1.1.0';
+  const APP_VERSION = '1.2.0';
 
   const L = window.FWM;
   const $ = (id) => document.getElementById(id);
@@ -184,7 +184,7 @@
       p.appendChild(s);
     }
   }
-  function renderJar() { $('jar-count').textContent = String(profile.coins); }
+  function renderJar() { $('jar-count').textContent = L.formatCoins(profile.coins); }
 
   function startRound(p) {
     profile = p;
@@ -200,6 +200,7 @@
     q = L.nextQuestion(profile, round.prevKey);
     round.prevKey = q.key;
     round.firstTry = true;
+    round.wrong = 0;
     busy = false;
     renderProgress();
     renderQuestion();
@@ -311,11 +312,12 @@
       $('question').classList.add('locked');
       Sound.right();
       let change = null;
-      if (round.firstTry) {
-        change = L.recordFirstTry(profile, true);
-        L.addCoins(data, profile, L.COIN_PER_RIGHT, 'right answer');
-        round.coins += L.COIN_PER_RIGHT;
-        flyCoin(btn);
+      if (round.firstTry) change = L.recordFirstTry(profile, true);
+      const earned = L.coinsForAnswer(round.wrong);
+      if (earned > 0) {
+        L.addCoins(data, profile, earned, earned < 1 ? 'right on 2nd try' : 'right answer');
+        round.coins += earned;
+        flyCoin(btn, earned < 1);
       }
       save();
       Voice.say(L.pick(Math.random, L.PRAISE));
@@ -334,6 +336,7 @@
     } else {
       btn.classList.add('wrong');
       Sound.wrong();
+      round.wrong++;
       if (round.firstTry) {
         round.firstTry = false;
         L.recordFirstTry(profile, false);
@@ -350,7 +353,7 @@
     const dc = $('done-coins');
     clear(dc);
     dc.appendChild(el('span', 'coin'));
-    dc.appendChild(el('span', null, '+' + round.coins));
+    dc.appendChild(el('span', null, '+' + L.formatCoins(round.coins)));
     renderPrizes($('done-prizes'), profile.coins);
     show('done');
     Sound.fanfare();
@@ -365,7 +368,7 @@
     data.rewards.slice().sort((a, b) => a.price - b.price).slice(0, 4).forEach((w) => {
       const ready = coins >= w.price;
       const p = el('div', 'prize' + (ready ? ' ready' : ''));
-      p.appendChild(el('div', 'prize-pic', w.emoji));
+      p.appendChild(rewardIcon(w, 'prize-pic'));
       const bar = el('div', 'prize-bar');
       const fill = el('div', 'prize-fill');
       fill.style.width = Math.min(100, Math.round(coins / w.price * 100)) + '%';
@@ -380,11 +383,11 @@
   }
 
   // ---------- Effects ----------
-  function flyCoin(fromEl) {
+  function flyCoin(fromEl, half) {
     const jar = $('jar');
     const a = fromEl.getBoundingClientRect();
     const b = jar.getBoundingClientRect();
-    const c = el('span', 'coin fly-coin');
+    const c = el('span', 'coin fly-coin' + (half ? ' half' : ''));
     c.style.left = (a.left + a.width / 2 - 23) + 'px';
     c.style.top = (a.top + a.height / 2 - 23) + 'px';
     $('fx').appendChild(c);
@@ -430,7 +433,7 @@
       c.appendChild(el('span', 'name', p.name));
       const mc = el('span', 'mini-coins');
       mc.appendChild(el('span', 'coin small'));
-      mc.appendChild(el('span', null, String(p.coins)));
+      mc.appendChild(el('span', null, L.formatCoins(p.coins)));
       c.appendChild(mc);
       c.addEventListener('click', () => { Sound.tap(); startRound(p); });
       g.appendChild(c);
@@ -504,14 +507,14 @@
       r.appendChild(info);
       const pill = el('div', 'coins-pill');
       pill.appendChild(el('span', 'coin small'));
-      pill.appendChild(el('span', null, String(p.coins)));
+      pill.appendChild(el('span', null, L.formatCoins(p.coins)));
       r.appendChild(pill);
       r.appendChild(btn('Spend', 'primary', () => openSpend(p)));
       r.appendChild(btn('+1', '', () => { L.addCoins(data, p, 1, 'parent added'); save(); renderParent(); }));
       r.appendChild(btn('−1', '', () => { if (p.coins > 0) { L.addCoins(data, p, -1, 'parent removed'); save(); renderParent(); } }));
       r.appendChild(btn('Edit', '', () => openEdit(p, 'parent')));
       r.appendChild(btn('Delete', 'danger', () => {
-        if (confirm('Delete ' + p.name + ' and their ' + p.coins + ' coins?')) {
+        if (confirm('Delete ' + p.name + ' and their ' + L.formatCoins(p.coins) + ' coins?')) {
           data.profiles = data.profiles.filter((x) => x.id !== p.id);
           save(); renderParent();
         }
@@ -524,8 +527,12 @@
     clear(rr);
     data.rewards.forEach((w) => {
       const r = el('div', 'row');
-      const em = el('input', 'remoji'); em.value = w.emoji; em.maxLength = 4;
-      em.addEventListener('change', () => { w.emoji = em.value.trim() || '🎁'; save(); });
+      const em = el('button', 'icon-btn');
+      em.setAttribute('aria-label', 'Change picture');
+      em.appendChild(rewardIcon(w, 'icon-btn-pic'));
+      em.addEventListener('click', () => openIconPicker(w, (icon) => {
+        w.emoji = icon.emoji; w.image = icon.image; save(); renderParent();
+      }));
       const nm = el('input', 'rname'); nm.value = w.name; nm.maxLength = 30;
       nm.addEventListener('change', () => { w.name = nm.value.trim() || w.name; save(); });
       const pr = el('input', 'price'); pr.type = 'number'; pr.inputMode = 'numeric'; pr.min = '1'; pr.max = '999'; pr.value = w.price;
@@ -576,25 +583,101 @@
     return b;
   }
 
+  // ---------- Reward pictures ----------
+  // A reward shows its photo if it has one, otherwise its emoji.
+  function rewardIcon(w, cls) {
+    const box = el('span', 'ricon ' + (cls || ''));
+    if (w.image) {
+      const img = el('img');
+      img.src = w.image; img.alt = '';
+      box.appendChild(img);
+    } else {
+      box.textContent = w.emoji || '🎁';
+    }
+    return box;
+  }
+
+  const ICON_CHOICES = [
+    '🍦', '🍫', '🍭', '🍬', '🍩', '🧁', '🎂', '🍕', '🍔', '🍟', '🍿', '🥤', '🍉', '🍓',
+    '🎮', '🧱', '🧸', '🧩', '🎲', '🪀', '🪁', '🚲', '🛴', '⚽', '🏀', '🎨', '🖍️', '✂️',
+    '📚', '📖', '🎬', '📺', '🎧', '🎤', '🎹', '🎁', '🎈', '🎉', '🏖️', '🛝', '🎡', '🎢',
+    '🏊', '🐶', '🦄', '🚗', '🚀', '🌙', '⏰', '⭐', '🏆', '🎟️', '💤', '🛁'
+  ];
+  let iconPick = null;
+  function openIconPicker(current, onPick) {
+    iconPick = onPick;
+    const g = $('icon-grid');
+    clear(g);
+    ICON_CHOICES.forEach((e) => {
+      const b = el('button', !current.image && current.emoji === e ? 'sel' : '', e);
+      b.addEventListener('click', () => pickIcon({ emoji: e, image: null }));
+      g.appendChild(b);
+    });
+    $('icon-own').value = '';
+    $('icon-sheet').classList.remove('hidden');
+  }
+  function pickIcon(icon) {
+    const fn = iconPick;
+    closeIconPicker();
+    if (fn) fn(icon);
+  }
+  function closeIconPicker() { iconPick = null; $('icon-sheet').classList.add('hidden'); }
+
+  let newRewardIcon = { emoji: '🎁', image: null };
+  function setNewRewardIcon(icon) {
+    newRewardIcon = { emoji: icon.emoji || '🎁', image: icon.image || null };
+    const b = $('new-reward-icon');
+    clear(b);
+    b.appendChild(rewardIcon(newRewardIcon, 'icon-btn-pic'));
+  }
+
+  // Shrink a photo to a small square (keeps the saved data small).
+  function photoToIcon(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = reject;
+      reader.onload = () => {
+        const img = new Image();
+        img.onerror = reject;
+        img.onload = () => {
+          const size = 200;
+          const c = document.createElement('canvas');
+          c.width = c.height = size;
+          const side = Math.min(img.naturalWidth, img.naturalHeight);
+          const sx = (img.naturalWidth - side) / 2, sy = (img.naturalHeight - side) / 2;
+          const ctx = c.getContext('2d');
+          ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, size, size);
+          ctx.drawImage(img, sx, sy, side, side, 0, 0, size, size);
+          let q = 0.85, url = c.toDataURL('image/jpeg', q);
+          while (url.length > L.MAX_IMAGE_CHARS && q > 0.3) { q -= 0.15; url = c.toDataURL('image/jpeg', q); }
+          if (!L.cleanImage(url)) { reject(new Error('too big')); return; }
+          resolve(url);
+        };
+        img.src = reader.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
   // Spend coins on a reward
   let spendFor = null;
   function openSpend(p) { spendFor = p; renderSpend(); $('spend-sheet').classList.remove('hidden'); }
   function renderSpend() {
     const p = spendFor;
-    $('spend-title').textContent = p.avatar + ' ' + p.name + ' has ' + p.coins + ' coins';
+    $('spend-title').textContent = p.avatar + ' ' + p.name + ' has ' + L.formatCoins(p.coins) + ' coins';
     const list = $('spend-list');
     clear(list);
     if (!data.rewards.length) list.appendChild(el('p', 'hint', 'Add a reward first.'));
     data.rewards.forEach((w) => {
       const r = el('div', 'row');
-      r.appendChild(el('span', 'pic', w.emoji));
+      r.appendChild(rewardIcon(w, 'pic'));
       const info = el('div', 'grow');
       info.appendChild(el('div', 'title', w.name));
       info.appendChild(el('div', 'sub', w.price + ' coins'));
       r.appendChild(info);
       const b = btn('Buy', 'primary', () => {
         if (p.coins < w.price) return;
-        L.addCoins(data, p, -w.price, 'reward: ' + w.emoji + ' ' + w.name);
+        L.addCoins(data, p, -w.price, 'reward: ' + (w.image ? '' : w.emoji + ' ') + w.name);
         save();
         Sound.coin();
         renderSpend(); renderParent();
@@ -696,13 +779,30 @@
       editing.level = b.dataset.level;
       document.querySelectorAll('.level-btn').forEach((x) => x.classList.toggle('sel', x === b));
     }));
+    $('new-reward-icon').addEventListener('click', () => openIconPicker(newRewardIcon, setNewRewardIcon));
+    $('icon-cancel').addEventListener('click', closeIconPicker);
+    $('icon-own-use').addEventListener('click', () => {
+      const v = $('icon-own').value.trim();
+      if (v) pickIcon({ emoji: v.slice(0, 16), image: null });
+    });
+    $('icon-photo-btn').addEventListener('click', () => $('icon-photo').click());
+    $('icon-photo').addEventListener('change', (e) => {
+      const f = e.target.files && e.target.files[0];
+      e.target.value = '';
+      if (!f) return;
+      $('icon-photo-btn').textContent = 'Loading…';
+      photoToIcon(f).then((img) => pickIcon({ emoji: '🎁', image: img }))
+        .catch(() => alert('Could not use that photo. Try another one.'))
+        .then(() => { $('icon-photo-btn').textContent = '📷 Choose a photo'; });
+    });
     $('btn-spend-close').addEventListener('click', () => { $('spend-sheet').classList.add('hidden'); spendFor = null; });
     $('btn-add-reward').addEventListener('click', () => {
       const name = $('new-reward-name').value.trim();
       const price = parseInt($('new-reward-price').value, 10);
       if (!name || !(price > 0)) return;
-      data.rewards.push({ id: L.newId('r'), emoji: $('new-reward-emoji').value.trim() || '🎁', name: name, price: Math.min(999, price) });
-      $('new-reward-name').value = ''; $('new-reward-price').value = ''; $('new-reward-emoji').value = '';
+      data.rewards.push({ id: L.newId('r'), emoji: newRewardIcon.emoji, image: newRewardIcon.image, name: name, price: Math.min(999, price) });
+      $('new-reward-name').value = ''; $('new-reward-price').value = '';
+      setNewRewardIcon({ emoji: '🎁', image: null });
       save(); renderParent();
     });
     $('voice-select').addEventListener('change', (e) => {

@@ -7,6 +7,9 @@
   // ---------- Settings ----------
   var ROUND_LENGTH = 10;        // questions per round
   var COIN_PER_RIGHT = 1;       // coin for a right answer on the first try
+  // Coins for a right answer by how many wrong taps came before it:
+  // right away = 1, after one wrong = ½, after two or more wrong = 0.
+  var COINS_BY_WRONG = [1, 0.5, 0];
   var ROUND_BONUS = 3;          // bonus coins for finishing a round
   var LEVEL_UP_STREAK = 5;      // right-first-try in a row to get harder
   var LEVEL_DOWN_MISSES = 3;    // wrong-first-try in a row to get easier
@@ -261,6 +264,8 @@
     }
     out.rewards.forEach(function (r) {
       r.price = Math.max(1, Math.min(9999, r.price | 0));
+      r.emoji = typeof r.emoji === 'string' && r.emoji.trim() ? r.emoji.trim().slice(0, 16) : '🎁';
+      r.image = cleanImage(r.image);
     });
     out.profiles.forEach(function (p) {
       p.name = String(p.name || '').slice(0, 20);
@@ -269,9 +274,31 @@
       var track = TRACKS[p.level];
       p.stage = Math.max(0, Math.min(track.length - 1, p.stage | 0));
       p.streak = p.streak | 0; p.misses = p.misses | 0;
-      p.coins = Math.max(0, p.coins | 0);
+      p.coins = Math.max(0, halves(p.coins));
     });
     return out;
+  }
+
+  function halves(x) { return Math.round((Number(x) || 0) * 2) / 2; }
+
+  function coinsForAnswer(wrongTaps) {
+    wrongTaps = Math.max(0, wrongTaps | 0);
+    return COINS_BY_WRONG[Math.min(wrongTaps, COINS_BY_WRONG.length - 1)];
+  }
+
+  // 12.5 → "12½", 0.5 → "½", 3 → "3"
+  function formatCoins(n) {
+    n = halves(n);
+    var whole = Math.floor(n);
+    var half = n - whole >= 0.5;
+    if (!half) return String(whole);
+    return (whole ? String(whole) : '') + '½';
+  }
+
+  // A reward's picture: an emoji, or a small photo saved as a data URL.
+  var MAX_IMAGE_CHARS = 150000;
+  function cleanImage(img) {
+    return typeof img === 'string' && /^data:image\/(jpeg|png|webp);base64,/.test(img) && img.length <= MAX_IMAGE_CHARS ? img : null;
   }
 
   function newId(prefix) {
@@ -279,7 +306,7 @@
   }
 
   function addCoins(data, profile, delta, reason) {
-    profile.coins = Math.max(0, (profile.coins | 0) + delta);
+    profile.coins = Math.max(0, halves(halves(profile.coins) + delta));
     data.log.push({ t: Date.now(), profileId: profile.id, delta: delta, reason: reason || '' });
     if (data.log.length > 300) data.log = data.log.slice(-300);
     return profile.coins;
@@ -337,6 +364,8 @@
     TRACKS: TRACKS, ITEMS: ITEMS, AVATARS: AVATARS, PRAISE: PRAISE, RETRY: RETRY, SAY: SAY,
     STORAGE_KEY: STORAGE_KEY, DATA_VERSION: DATA_VERSION, VOICE_LANG: VOICE_LANG,
     numWord: numWord, dotsPhrase: dotsPhrase, defaultRewards: defaultRewards,
+    COINS_BY_WRONG: COINS_BY_WRONG, coinsForAnswer: coinsForAnswer, formatCoins: formatCoins, halves: halves,
+    cleanImage: cleanImage, MAX_IMAGE_CHARS: MAX_IMAGE_CHARS,
     randInt: randInt, pick: pick, shuffle: shuffle, numberChoices: numberChoices,
     nextQuestion: nextQuestion, getStage: getStage, recordFirstTry: recordFirstTry,
     defaultData: defaultData, normalizeData: normalizeData, newId: newId, addCoins: addCoins,
