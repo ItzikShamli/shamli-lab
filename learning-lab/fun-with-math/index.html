@@ -44,6 +44,7 @@
     <div class="done-box">
       <div class="trophy">🏆</div>
       <div id="done-coins" class="done-coins"></div>
+      <div id="done-prizes" class="prizes"></div>
       <div class="done-buttons">
         <button id="btn-again" class="big-btn green" aria-label="Play again">▶</button>
         <button id="btn-done-home" class="big-btn blue" aria-label="Home">🏠</button>
@@ -74,7 +75,7 @@
       <button id="btn-add-profile" class="text-btn">+ Add a player</button>
 
       <h2>Rewards</h2>
-      <p class="hint">Set a price in coins. Tap a player's "Spend" button to buy a reward.</p>
+      <p class="hint">Set a price in coins. Kids see the prizes as pictures after each round. Tap a player's "Spend" button to buy one.</p>
       <div id="parent-rewards"></div>
       <div class="reward-add">
         <input id="new-reward-emoji" maxlength="4" placeholder="🎁" aria-label="Reward picture">
@@ -88,7 +89,8 @@
         <select id="voice-select" aria-label="Voice"></select>
         <button id="btn-voice-test" class="text-btn">Test</button>
       </div>
-      <p class="hint">For a nicer voice: Settings → Accessibility → Spoken Content → Voices → English, and download an "Enhanced" or "Premium" voice. Then reopen the game.</p>
+      <p id="voice-missing" class="hint warn hidden">No Hebrew voice found on this device. The questions won't be read out until one is installed.</p>
+      <p class="hint">The game speaks Hebrew. For a nicer voice: Settings → Accessibility → Spoken Content → Voices → Hebrew → Carmit, and download "Carmit (Enhanced)". Then close and reopen the game.</p>
 
       <h2>Recent coins</h2>
       <div id="parent-log" class="log"></div>

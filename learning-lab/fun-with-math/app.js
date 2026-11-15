@@ -3,7 +3,7 @@
   'use strict';
 
   // Keep in sync with CACHE_VERSION in sw.js (tests check this).
-  const APP_VERSION = '1.0.0';
+  const APP_VERSION = '1.1.0';
 
   const L = window.FWM;
   const $ = (id) => document.getElementById(id);
@@ -105,7 +105,7 @@
       if (!this.ok || !text) return;
       if (!this.voice) this.refresh();
       const u = new SpeechSynthesisUtterance(text);
-      if (this.voice) { u.voice = this.voice; u.lang = this.voice.lang; } else { u.lang = 'en-US'; }
+      if (this.voice) { u.voice = this.voice; u.lang = this.voice.lang; } else { u.lang = L.VOICE_LANG; }
       u.rate = 0.85;
       u.pitch = 1.05;
       const btn = $('btn-say');
@@ -233,35 +233,65 @@
       });
       qa.style.gap = '90px';
       return;
-    } else if (q.type === 'add' || q.type === 'sub') {
-      qa.appendChild(termEl(q.a, q.type === 'sub' ? q.b : 0));
+    } else if (q.type === 'sub') {
+      qa.appendChild(takeAwayEl());
+      q.choices.forEach((c) => an.appendChild(answerBtn(c, numberWithDots(c, 'term'))));
+    } else if (q.type === 'add') {
+      qa.appendChild(termEl(q.a));
       qa.appendChild(el('div', 'op', q.op));
-      qa.appendChild(termEl(q.b, 0, q.type === 'sub'));
+      qa.appendChild(termEl(q.b));
       qa.appendChild(el('div', 'op', '='));
       qa.appendChild(el('div', 'qmark', '?'));
       q.choices.forEach((c) => an.appendChild(answerBtn(c, numberWithDots(c, 'term'))));
     }
   }
 
-  // One side of a + or − sum: the number with matching objects or dots.
-  // For take-away, the first number shows the crossed-out ones; the second number shows plain objects.
-  function termEl(n, gone, isTakeAway) {
+  // One side of a + sum: the number with matching objects or dots.
+  function termEl(n) {
     const t = el('div', 'term');
     t.appendChild(el('div', 'numeral', String(n)));
-    if (isTakeAway) gone = n; // the number taken away is shown crossed out
-    const small = Math.max(q.a, q.b, q.type === 'add' ? q.answer : 0) <= 10;
-    if (small) {
+    if (q.answer <= 10) {
       const item = round.item || (round.item = L.pick(Math.random, L.ITEMS).e);
-      t.appendChild(objectsEl(n, item, { gone: gone, size: 40, cols: Math.min(5, n) }));
+      t.appendChild(objectsEl(n, item, { size: 40, cols: Math.min(5, n) }));
     } else {
-      const d = dotsEl(n, 'q');
-      if (gone) {
-        const dots = d.querySelectorAll('.dot');
-        for (let i = dots.length - gone; i < dots.length; i++) dots[i].classList.add('gone');
-      }
-      t.appendChild(d);
+      t.appendChild(dotsEl(n, 'q'));
     }
     return t;
+  }
+
+  // Take-away: the sum on top, ONE picture of the first number below it.
+  // After a moment the ones being taken away hop off and fade with a red ✕;
+  // the ones that stay are what's left. Numbers sit next to their own group.
+  function takeAwayEl() {
+    const wrap = el('div', 'sub-wrap' + (q.a > 10 ? ' teens' : ''));
+    const eq = el('div', 'sub-eq');
+    eq.appendChild(el('div', 'numeral', String(q.a)));
+    eq.appendChild(el('div', 'op', '−'));
+    eq.appendChild(el('div', 'numeral away-num', String(q.b)));
+    eq.appendChild(el('div', 'op', '='));
+    eq.appendChild(el('div', 'qmark', '?'));
+    wrap.appendChild(eq);
+
+    const pic = el('div', 'sub-pic');
+    const stay = q.a - q.b;
+    const step = Math.min(0.15, 1.2 / q.b); // all gone within ~2.8s
+    let keepBox, awayBox;
+    if (q.a <= 10) {
+      const item = L.pick(Math.random, L.ITEMS).e;
+      keepBox = objectsEl(stay, item, { size: 52, cols: Math.min(5, stay) });
+      awayBox = objectsEl(q.b, item, { size: 52, cols: Math.min(5, q.b) });
+      awayBox.querySelectorAll('.obj').forEach((o, i) => { o.classList.add('away'); o.style.setProperty('--d', (0.9 + i * step) + 's'); });
+    } else {
+      keepBox = dotsEl(stay, 'q');
+      awayBox = dotsEl(q.b, 'q');
+      awayBox.querySelectorAll('.dot').forEach((o, i) => { o.classList.add('away'); o.style.setProperty('--d', (0.9 + i * step) + 's'); });
+    }
+    keepBox.classList.add('keep');
+    awayBox.classList.add('away-box');
+    pic.appendChild(keepBox);
+    pic.appendChild(awayBox);
+    wrap.appendChild(pic);
+    return wrap;
   }
 
   function answerBtn(value, content) {
@@ -297,7 +327,7 @@
         wait += 1700;
         setTimeout(() => {
           levelUpFx();
-          Voice.say('Wow! Let\'s try harder ones!', true);
+          Voice.say(L.SAY.harder, true);
         }, 900);
       }
       setTimeout(nextQuestion, wait);
@@ -321,10 +351,32 @@
     clear(dc);
     dc.appendChild(el('span', 'coin'));
     dc.appendChild(el('span', null, '+' + round.coins));
+    renderPrizes($('done-prizes'), profile.coins);
     show('done');
     Sound.fanfare();
     confetti();
-    Voice.say('You did it! You got ' + round.coins + ' coins!');
+    Voice.say(L.SAY.roundDone);
+  }
+
+  // ---------- Prize list (pictures only, for the kids) ----------
+  // Each prize: its picture, a bar filling up with the kid's coins, and its price.
+  function renderPrizes(box, coins) {
+    clear(box);
+    data.rewards.slice().sort((a, b) => a.price - b.price).slice(0, 4).forEach((w) => {
+      const ready = coins >= w.price;
+      const p = el('div', 'prize' + (ready ? ' ready' : ''));
+      p.appendChild(el('div', 'prize-pic', w.emoji));
+      const bar = el('div', 'prize-bar');
+      const fill = el('div', 'prize-fill');
+      fill.style.width = Math.min(100, Math.round(coins / w.price * 100)) + '%';
+      bar.appendChild(fill);
+      p.appendChild(bar);
+      const price = el('div', 'prize-price');
+      price.appendChild(el('span', 'coin small'));
+      price.appendChild(el('span', null, String(w.price)));
+      p.appendChild(price);
+      box.appendChild(p);
+    });
   }
 
   // ---------- Effects ----------
@@ -393,7 +445,7 @@
   function goProfiles(speak) {
     renderProfiles();
     show('profiles');
-    if (speak) Voice.say(data.profiles.length ? 'Who is playing? Tap your picture.' : 'Hi! Ask a grown-up to add you.');
+    if (speak) Voice.say(data.profiles.length ? L.SAY.whoPlays : L.SAY.noPlayers);
   }
 
   // ---------- Grown-up gate ----------
@@ -491,9 +543,11 @@
     // Voices
     const sel = $('voice-select');
     clear(sel);
-    const auto = el('option', null, 'Automatic (best English voice)'); auto.value = '';
+    const auto = el('option', null, 'Automatic (best Hebrew voice)'); auto.value = '';
     sel.appendChild(auto);
-    L.englishVoices(Voice.list()).forEach((v) => {
+    const voices = L.hebrewVoices(Voice.list());
+    $('voice-missing').classList.toggle('hidden', voices.length > 0);
+    voices.forEach((v) => {
       const o = el('option', null, v.name + ' (' + v.lang + ')');
       o.value = v.voiceURI;
       sel.appendChild(o);
@@ -655,7 +709,7 @@
       data.voiceURI = e.target.value || null;
       save(); Voice.refresh();
     });
-    $('btn-voice-test').addEventListener('click', () => { Sound.unlock(); Voice.say('Hi! Let\'s have fun with math!'); });
+    $('btn-voice-test').addEventListener('click', () => { Sound.unlock(); Voice.say(L.SAY.test); });
 
     // Stop pinch-zoom (double-tap zoom is already off via touch-action in the CSS).
     document.addEventListener('gesturestart', (e) => e.preventDefault());

@@ -2,7 +2,7 @@
  * IMPORTANT: bump CACHE_VERSION on every release (and APP_VERSION in app.js to match),
  * so the iPad downloads the new files.
  */
-const CACHE_VERSION = '1.0.0';
+const CACHE_VERSION = '1.1.0';
 const CACHE_NAME = 'fun-with-math-' + CACHE_VERSION;
 
 const FILES = [

@@ -32,9 +32,10 @@ Each game is its own small app in its own folder. Don't make one big game that d
 - Safari quirk: sound only plays after the first tap, so start with a big "play" button.
 
 ## Voice
-- English, using the iPad's built-in voice (the browser's speech API).
+- **Hebrew**, using the iPad's built-in voice (the browser's speech API). Numbers are spoken as Hebrew words.
 - Every question is read out loud, and a speaker button replays it.
-- Prefer an "Enhanced" or "Premium" English voice when the iPad has one.
+- Prefer an "Enhanced" or "Premium" Hebrew voice (e.g. Carmit Enhanced) when the iPad has one.
+- Only the voice is Hebrew. The parent screens stay in English.
 
 ## The first game: Fun With Math (`learning-lab/fun-with-math/`)
 - **Profiles (decided):** the game is meant to be shared, so there are no built-in kids. Anyone can create their own profile: enter a name, pick a picture, and pick a starting level. Creating a profile is an adult task, behind the adult math question.
@@ -45,11 +46,20 @@ Each game is its own small app in its own folder. Don't make one big game that d
 - Every number shows next to the matching number of dots or objects.
 
 ## Coins (pretend money for home rewards, no real money)
-- A coin for each right answer, plus a bonus for finishing a round.
+- A coin for each right answer (first try), plus a bonus for finishing a round.
+- Prize list (prices — buying a prize takes the coins out of the jar):
+  - 🍦 Ice cream = 100 coins
+  - 🎮 Pokémon game = 200 coins
+  - 🧱 Lego game = 300 coins
+- Kids see the prize list as pictures after each round, each with a bar filling up with their coins.
 - Each profile has its own coin jar, saved on the iPad.
 - A parent screen, locked behind an adult math question (like 7 × 8), where a parent spends coins on home rewards and sets prices (for example: ice cream = 10 coins).
 
+## Take-away picture
+- The sum is on top. Below it is ONE picture of the first number: the ones that stay, and the ones taken away in a red dashed box (red matches the red number being taken away). After a moment the taken-away ones hop and fade with a red ✕, so what's left is easy to count.
+
 ## Decisions log
+- v1.1: voice in Hebrew (parent screens stay English); prize list 100/200/300 as prices; clearer take-away picture.
 - Game name: **fun-with-math** → https://itzikshamli.github.io/shamli-lab/learning-lab/fun-with-math/
 - Kid pictures: each user creates their own profile (name + picture), so the game can be shared.
 

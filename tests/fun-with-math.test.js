@@ -103,8 +103,37 @@ test('saved data is repaired safely', () => {
   assert.strictEqual(d.profiles[0].coins, 0);
   assert.ok(d.rewards.length > 0, 'default rewards kept');
   assert.deepStrictEqual(L.normalizeData('garbage').profiles, []);
-  const ice = L.defaultData().rewards.find((r) => r.name === 'Ice cream');
-  assert.strictEqual(ice.price, 10);
+  const prices = L.defaultData().rewards.map((r) => r.name + '=' + r.price).join(', ');
+  assert.strictEqual(prices, 'Ice cream=100, Pokémon game=200, Lego game=300');
+});
+
+test('version 1 sample rewards become the prize list; edited rewards are kept', () => {
+  const v1 = { version: 1, voiceURI: 'en-voice', profiles: [], rewards: [
+    { id: 'r1', emoji: '🍦', name: 'Ice cream', price: 10 },
+    { id: 'r2', emoji: '📺', name: 'Show time', price: 15 },
+    { id: 'r3', emoji: '📖', name: 'Extra bedtime story', price: 5 }] };
+  const d = L.normalizeData(JSON.parse(JSON.stringify(v1)));
+  assert.deepStrictEqual(d.rewards.map((r) => r.price), [100, 200, 300]);
+  assert.strictEqual(d.voiceURI, null, 'old English voice choice is cleared');
+  assert.strictEqual(d.version, 2);
+  v1.rewards[0].price = 12;
+  assert.strictEqual(L.normalizeData(v1).rewards[0].price, 12, 'a parent-edited list is not replaced');
+  // Already on version 2: rewards and voice are left alone.
+  const v2 = L.normalizeData({ version: 2, voiceURI: 'he-voice', rewards: [{ id: 'x', emoji: '🎁', name: 'X', price: 7 }] });
+  assert.strictEqual(v2.voiceURI, 'he-voice');
+  assert.strictEqual(v2.rewards[0].price, 7);
+});
+
+test('everything spoken is Hebrew words (no English, no digits)', () => {
+  const lines = [].concat(L.SAY.praise, L.SAY.retry, [L.SAY.harder, L.SAY.roundDone, L.SAY.whoPlays, L.SAY.noPlayers, L.SAY.test]);
+  const rng = rngFrom(11);
+  for (const level of Object.keys(L.TRACKS)) {
+    L.TRACKS[level].forEach((s, i) => { for (let k = 0; k < 400; k++) lines.push(L.nextQuestion({ level, stage: i }, null, rng).say); });
+  }
+  lines.forEach((t) => assert.ok(/[\u0590-\u05FF]/.test(t) && !/[A-Za-z0-9]/.test(t), 'not Hebrew-only: ' + t));
+  assert.strictEqual(L.numWord(12), 'שתים עשרה');
+  assert.strictEqual(L.dotsPhrase(2), 'שתי נקודות');
+  assert.strictEqual(L.dotsPhrase(1), 'נקודה אחת');
 });
 
 test('coins add up and never go below zero', () => {
@@ -126,21 +155,21 @@ test('grown-up question is hard for a little kid', () => {
   }
 });
 
-test('voice choice prefers Premium/Enhanced English and skips novelty voices', () => {
+test('voice choice prefers a Premium/Enhanced Hebrew voice and ignores other languages', () => {
   const voices = [
-    { name: 'Bubbles', lang: 'en-US', voiceURI: 'com.apple.speech.synthesis.voice.Bubbles' },
-    { name: 'Thomas', lang: 'fr-FR', voiceURI: 'fr' },
-    { name: 'Samantha', lang: 'en-US', voiceURI: 'com.apple.voice.compact.en-US.Samantha' },
     { name: 'Samantha (Enhanced)', lang: 'en-US', voiceURI: 'com.apple.voice.enhanced.en-US.Samantha' },
-    { name: 'Ava (Premium)', lang: 'en-US', voiceURI: 'com.apple.voice.premium.en-US.Ava' },
-    { name: 'Daniel', lang: 'en_GB', voiceURI: 'com.apple.voice.compact.en-GB.Daniel' }
+    { name: 'Bubbles', lang: 'en-US', voiceURI: 'com.apple.speech.synthesis.voice.Bubbles' },
+    { name: 'Carmit', lang: 'he-IL', voiceURI: 'com.apple.voice.compact.he-IL.Carmit' },
+    { name: 'Carmit (Enhanced)', lang: 'he-IL', voiceURI: 'com.apple.voice.enhanced.he-IL.Carmit' },
+    { name: 'Hebrew Premium', lang: 'he_IL', voiceURI: 'com.apple.voice.premium.he-IL.X' },
+    { name: 'Old', lang: 'iw-IL', voiceURI: 'iw' }
   ];
-  assert.strictEqual(L.pickVoice(voices).name, 'Ava (Premium)');
-  assert.strictEqual(L.pickVoice(voices.slice(0, 4)).name, 'Samantha (Enhanced)');
-  assert.strictEqual(L.pickVoice(voices.slice(0, 3)).name, 'Samantha');
-  assert.strictEqual(L.pickVoice(voices, voices[5].voiceURI).name, 'Daniel', 'saved choice wins');
-  assert.strictEqual(L.pickVoice(voices.slice(0, 2)), null);
-  assert.ok(!L.englishVoices(voices).some((v) => v.name === 'Bubbles' || v.lang === 'fr-FR'));
+  assert.strictEqual(L.pickVoice(voices).name, 'Hebrew Premium');
+  assert.strictEqual(L.pickVoice(voices.slice(0, 4)).name, 'Carmit (Enhanced)');
+  assert.strictEqual(L.pickVoice(voices.slice(0, 3)).name, 'Carmit');
+  assert.strictEqual(L.pickVoice(voices, 'iw').name, 'Old', 'saved choice wins');
+  assert.strictEqual(L.pickVoice(voices.slice(0, 2)), null, 'no Hebrew voice → none');
+  assert.deepStrictEqual(L.hebrewVoices(voices).map((v) => v.lang).every((l) => /^(he|iw)/i.test(l)), true);
 });
 
 test('app version matches the service worker cache version', () => {

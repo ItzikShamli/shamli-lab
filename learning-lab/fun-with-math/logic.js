@@ -26,27 +26,50 @@
     ]
   };
 
+  // `many` is the Hebrew plural, used in the spoken questions.
   var ITEMS = [
-    { e: '🍎', one: 'apple', many: 'apples' },
-    { e: '🍓', one: 'strawberry', many: 'strawberries' },
-    { e: '⭐', one: 'star', many: 'stars' },
-    { e: '🐞', one: 'ladybug', many: 'ladybugs' },
-    { e: '🐟', one: 'fish', many: 'fish' },
-    { e: '🎈', one: 'balloon', many: 'balloons' },
-    { e: '🍪', one: 'cookie', many: 'cookies' },
-    { e: '🌸', one: 'flower', many: 'flowers' },
-    { e: '🐥', one: 'chick', many: 'chicks' },
-    { e: '🚗', one: 'car', many: 'cars' },
-    { e: '🦋', one: 'butterfly', many: 'butterflies' },
-    { e: '🍌', one: 'banana', many: 'bananas' }
+    { e: '🍎', many: 'תפוחים' },
+    { e: '🍓', many: 'תותים' },
+    { e: '⭐', many: 'כוכבים' },
+    { e: '🐞', many: 'חיפושיות' },
+    { e: '🐟', many: 'דגים' },
+    { e: '🎈', many: 'בלונים' },
+    { e: '🍪', many: 'עוגיות' },
+    { e: '🌸', many: 'פרחים' },
+    { e: '🐥', many: 'אפרוחים' },
+    { e: '🚗', many: 'מכוניות' },
+    { e: '🦋', many: 'פרפרים' },
+    { e: '🍌', many: 'בננות' }
   ];
+
+  // Numbers as spoken words, so the voice never has to guess the Hebrew form.
+  // NUM: counting form ("שלוש ועוד שתיים"). DOTS: before the feminine noun נקודות.
+  var NUM = ['אפס', 'אחת', 'שתיים', 'שלוש', 'ארבע', 'חמש', 'שש', 'שבע', 'שמונה', 'תשע', 'עשר',
+             'אחת עשרה', 'שתים עשרה', 'שלוש עשרה', 'ארבע עשרה', 'חמש עשרה', 'שש עשרה',
+             'שבע עשרה', 'שמונה עשרה', 'תשע עשרה', 'עשרים'];
+  function numWord(n) { return NUM[n] != null ? NUM[n] : String(n); }
+  function dotsPhrase(n) {
+    if (n === 1) return 'נקודה אחת';
+    if (n === 2) return 'שתי נקודות';
+    return numWord(n) + ' נקודות';
+  }
 
   var AVATARS = ['🦁', '🐯', '🐰', '🦊', '🐼', '🐨', '🐸', '🐵',
                  '🦄', '🦖', '🐙', '🦈', '🐧', '🦉', '🐶', '🐱',
                  '🐢', '🐝', '🚀', '⚽'];
 
-  var PRAISE = ['Great job!', 'Yes!', 'Awesome!', 'You got it!', 'Super!', 'Well done!'];
-  var RETRY = ['Try again!', 'Almost! Try again.', 'Oops! Try again.'];
+  // Spoken lines (Hebrew). Plural "you" so they fit every kid.
+  var SAY = {
+    praise: ['כל הכבוד!', 'יופי!', 'מעולה!', 'נכון מאוד!', 'מצוין!', 'וואו!'],
+    retry: ['נסו שוב!', 'כמעט! נסו שוב.', 'אופס! נסו שוב.'],
+    harder: 'וואו! עכשיו קצת יותר קשה!',
+    roundDone: 'כל הכבוד! הנה מטבעות לצנצנת!',
+    whoPlays: 'מי משחק? לחצו על התמונה שלכם.',
+    noPlayers: 'שלום! בקשו ממבוגר להוסיף אתכם.',
+    test: 'שלום! בואו נשחק חשבון!'
+  };
+  var PRAISE = SAY.praise;
+  var RETRY = SAY.retry;
 
   // ---------- Random helpers ----------
   function randInt(rng, lo, hi) { // inclusive
@@ -81,7 +104,6 @@
     return shuffle(rng, set);
   }
 
-  function itemName(item, n) { return n === 1 ? item.one : item.many; }
 
   // ---------- Question makers ----------
   function makeCount(rng, stage) {
@@ -90,7 +112,7 @@
     return {
       type: 'count', item: item.e, n: n, answer: n,
       choices: numberChoices(rng, n, 1, stage.max),
-      say: 'How many ' + item.many + '?',
+      say: 'כמה ' + item.many + ' יש?',
       key: 'count:' + n
     };
   }
@@ -108,7 +130,7 @@
       type: 'more', item: item.e, left: a, right: b,
       answer: a > b ? 'left' : 'right',
       choices: ['left', 'right'],
-      say: 'Which side has more ' + item.many + '?',
+      say: 'באיזה צד יש יותר ' + item.many + '?',
       key: 'more:' + a + ':' + b
     };
   }
@@ -118,7 +140,7 @@
     return {
       type: 'match', n: n, answer: n,
       choices: numberChoices(rng, n, 1, stage.max),
-      say: 'Find ' + n + (n === 1 ? ' dot.' : ' dots.'),
+      say: 'איפה יש ' + dotsPhrase(n) + '?',
       key: 'match:' + n
     };
   }
@@ -132,7 +154,7 @@
     return {
       type: 'add', a: a, b: b, op: '+', answer: sum,
       choices: numberChoices(rng, sum, 0, stage.max),
-      say: a + ' plus ' + b + '. How many?',
+      say: numWord(a) + ' ועוד ' + numWord(b) + '. כמה זה ביחד?',
       key: 'add:' + a + ':' + b
     };
   }
@@ -145,7 +167,7 @@
     return {
       type: 'sub', a: a, b: b, op: '−', answer: ans,
       choices: numberChoices(rng, ans, 0, stage.max),
-      say: a + ' take away ' + b + '. How many are left?',
+      say: numWord(a) + ' פחות ' + numWord(b) + '. כמה נשאר?',
       key: 'sub:' + a + ':' + b
     };
   }
@@ -197,31 +219,49 @@
 
   // ---------- Saved data ----------
   var STORAGE_KEY = 'fun-with-math:data:v1';
+  var DATA_VERSION = 2;
+
+  function defaultRewards() {
+    return [
+      { id: 'p100', emoji: '🍦', name: 'Ice cream', price: 100 },
+      { id: 'p200', emoji: '🎮', name: 'Pokémon game', price: 200 },
+      { id: 'p300', emoji: '🧱', name: 'Lego game', price: 300 }
+    ];
+  }
 
   function defaultData() {
     return {
-      version: 1,
+      version: DATA_VERSION,
       profiles: [],
-      rewards: [
-        { id: 'r1', emoji: '🍦', name: 'Ice cream', price: 10 },
-        { id: 'r2', emoji: '📺', name: 'Show time', price: 15 },
-        { id: 'r3', emoji: '📖', name: 'Extra bedtime story', price: 5 }
-      ],
+      rewards: defaultRewards(),
       log: [],
       voiceURI: null
     };
+  }
+
+  // Version 1 came with sample rewards (10/15/5 coins). If nobody changed them, swap in the prize list.
+  var V1_SAMPLE_REWARDS = 'r1|Ice cream|10,r2|Show time|15,r3|Extra bedtime story|5';
+  function isUntouchedV1Rewards(rewards) {
+    return rewards.map(function (r) { return r.id + '|' + r.name + '|' + r.price; }).join(',') === V1_SAMPLE_REWARDS;
   }
 
   function normalizeData(d) {
     var base = defaultData();
     if (!d || typeof d !== 'object') return base;
     var out = {
-      version: 1,
+      version: DATA_VERSION,
       profiles: Array.isArray(d.profiles) ? d.profiles.filter(function (p) { return p && p.id; }) : [],
       rewards: Array.isArray(d.rewards) ? d.rewards.filter(function (r) { return r && r.id; }) : base.rewards,
       log: Array.isArray(d.log) ? d.log.slice(-300) : [],
       voiceURI: typeof d.voiceURI === 'string' ? d.voiceURI : null
     };
+    if ((d.version | 0) < 2) {
+      if (isUntouchedV1Rewards(out.rewards)) out.rewards = defaultRewards();
+      out.voiceURI = null; // the saved voice was an English one
+    }
+    out.rewards.forEach(function (r) {
+      r.price = Math.max(1, Math.min(9999, r.price | 0));
+    });
     out.profiles.forEach(function (p) {
       p.name = String(p.name || '').slice(0, 20);
       p.avatar = p.avatar || AVATARS[0];
@@ -255,9 +295,12 @@
   // ---------- Voice choice ----------
   var NOVELTY = /^(albert|bad news|bahh|bells|boing|bubbles|cellos|good news|jester|organ|superstar|trinoids|whisper|wobble|zarvox|deranged|hysterical|pipe organ)\b/i;
 
+  var VOICE_LANG = 'he-IL';
+
+  // Hebrew voices only ("he", or the old code "iw"). Premium > Enhanced > the rest.
   function voiceScore(v) {
     var lang = String(v.lang || '').replace('_', '-').toLowerCase();
-    if (lang.indexOf('en') !== 0) return -1;
+    if (!(lang === 'he' || lang === 'iw' || lang.indexOf('he-') === 0 || lang.indexOf('iw-') === 0)) return -1;
     var name = String(v.name || '');
     var id = name + ' ' + String(v.voiceURI || '');
     if (NOVELTY.test(name) || /speech\.synthesis\.voice\./i.test(id)) return -1;
@@ -265,9 +308,7 @@
     if (/premium/i.test(id)) s += 40;
     else if (/enhanced/i.test(id)) s += 30;
     if (/eloquence/i.test(id)) s -= 5;
-    if (lang === 'en-us') s += 6;
-    else if (lang === 'en-gb' || lang === 'en-au') s += 4;
-    if (/samantha|ava|allison|susan|zoe|karen|serena/i.test(name)) s += 2;
+    if (/carmit/i.test(name)) s += 2;
     if (v.localService) s += 1;
     return s;
   }
@@ -285,7 +326,7 @@
     return best;
   }
 
-  function englishVoices(voices) {
+  function hebrewVoices(voices) {
     return (voices || []).filter(function (v) { return voiceScore(v) > 0; })
       .sort(function (a, b) { return voiceScore(b) - voiceScore(a); });
   }
@@ -293,13 +334,14 @@
   var api = {
     ROUND_LENGTH: ROUND_LENGTH, COIN_PER_RIGHT: COIN_PER_RIGHT, ROUND_BONUS: ROUND_BONUS,
     LEVEL_UP_STREAK: LEVEL_UP_STREAK, LEVEL_DOWN_MISSES: LEVEL_DOWN_MISSES,
-    TRACKS: TRACKS, ITEMS: ITEMS, AVATARS: AVATARS, PRAISE: PRAISE, RETRY: RETRY,
-    STORAGE_KEY: STORAGE_KEY,
+    TRACKS: TRACKS, ITEMS: ITEMS, AVATARS: AVATARS, PRAISE: PRAISE, RETRY: RETRY, SAY: SAY,
+    STORAGE_KEY: STORAGE_KEY, DATA_VERSION: DATA_VERSION, VOICE_LANG: VOICE_LANG,
+    numWord: numWord, dotsPhrase: dotsPhrase, defaultRewards: defaultRewards,
     randInt: randInt, pick: pick, shuffle: shuffle, numberChoices: numberChoices,
     nextQuestion: nextQuestion, getStage: getStage, recordFirstTry: recordFirstTry,
     defaultData: defaultData, normalizeData: normalizeData, newId: newId, addCoins: addCoins,
     adultQuestion: adultQuestion, pickVoice: pickVoice, voiceScore: voiceScore,
-    englishVoices: englishVoices, itemName: itemName
+    hebrewVoices: hebrewVoices
   };
 
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
