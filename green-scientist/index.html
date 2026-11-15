@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>המדען הירוק</title>
+  <meta name="theme-color" content="#2f9e4d">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="המדען הירוק">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="icon" href="icons/icon-192.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app"></div>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <div id="fx" class="fx" aria-hidden="true"></div>
+
+  <script src="engine.js"></script>
+  <script src="sims.js"></script>
+  <!-- One file per class. To add a class: add modules/NN-name.js here and in sw.js. -->
+  <script src="modules/01-space-mars.js"></script>
+  <script src="modules/02-newton-boomerang.js"></script>
+</body>
+</html>

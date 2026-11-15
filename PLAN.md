@@ -9,6 +9,8 @@
 ```
 shamli-lab/
 ├── index.html              ← home page listing everything (more apps may come later)
+├── green-scientist/        ← second lab: המדען הירוק (science class companion)
+│   └── modules/            ← one file per weekly class
 └── learning-lab/
     ├── index.html          ← list of learning games
     └── fun-with-math/      ← the first game
@@ -79,3 +81,18 @@ Each game is its own small app in its own folder. Don't make one big game that d
 - Test only on the iPad, using the live GitHub Pages link.
 - Work on a branch and open a pull request. The owner merges it, then tests on the iPad.
 - Test what we can before opening the PR (check the JavaScript runs with no errors).
+
+## Second lab: Green Scientist (`green-scientist/`) — המדען הירוק
+- For parents and kids together, after the weekly science class (the 6-year-old's חוג). The teacher's weekly summary becomes a **module**.
+- **Hebrew, right-to-left. No voice**: parents read to the kids.
+- Fits **iPad mini and phones** (portrait and landscape). Works offline (its own Home Screen app).
+- Each module has six parts:
+  - 📖 **לומדים**: illustrated cards, one at a time, each with a question to ask the child
+  - 🎮 **משחקים**: sorting, ordering, matching, and interactive simulations
+  - ❓ **חידון**: 15+ questions with an explanation after each answer, stars and best score
+  - 🏠 **ניסויים בבית**: experiments to do together (materials, steps, questions, why it happens, safety)
+  - 🚀 **העשרה**: enrichment for the curious (real NASA photos when online)
+  - 💬 **מדברים על זה**: open questions for talking, with hints for parents
+- Things the kids build in class are used for questions, not as tasks.
+- Modules so far: 1. Space and Mars (כוכב/כוכב לכת, Mars, geodesic dome). 2. Boomerang: Newton's third law (action/reaction, helicopter tail rotor, boomerang).
+- **Adding next week's class:** copy a file in `green-scientist/modules/`, change the content, add its `<script>` line to `green-scientist/index.html` and its path to `FILES` in `green-scientist/sw.js`, bump the version (`engine.js` + `sw.js`), then run `node tests/green-scientist.test.js`.
