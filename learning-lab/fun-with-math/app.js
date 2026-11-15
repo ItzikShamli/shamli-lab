@@ -3,7 +3,7 @@
   'use strict';
 
   // Keep in sync with CACHE_VERSION in sw.js (tests check this).
-  const APP_VERSION = '1.2.0';
+  const APP_VERSION = '1.3.0';
 
   const L = window.FWM;
   const $ = (id) => document.getElementById(id);
@@ -213,9 +213,58 @@
     qa.style.gap = '';
     an.classList.remove('locked'); qa.classList.remove('locked');
 
+    const numberAnswers = () => q.choices.forEach((c) => an.appendChild(answerBtn(c, numberWithDots(c, 'term'))));
+
     if (q.type === 'count') {
-      qa.appendChild(objectsEl(q.n, q.item));
-      q.choices.forEach((c) => an.appendChild(answerBtn(c, numberWithDots(c, 'term'))));
+      qa.appendChild(q.messy ? scatterEl(q.n, q.item) : objectsEl(q.n, q.item));
+      numberAnswers();
+    } else if (q.type === 'compare') {
+      // [left group]  (=)  [right group]
+      const groupBtn = (side, n) => {
+        const g = el('button', 'group' + (q.choices.length > 2 ? ' narrow' : ''));
+        g.setAttribute('aria-label', side);
+        g.appendChild(objectsEl(n, q.item, { size: n > 5 ? 50 : 60 }));
+        g.addEventListener('click', () => answer(g, side));
+        return g;
+      };
+      qa.appendChild(groupBtn('left', q.left));
+      if (q.choices.indexOf('same') !== -1) {
+        const eq = el('button', 'group eq', '=');
+        eq.setAttribute('aria-label', 'same');
+        eq.addEventListener('click', () => answer(eq, 'same'));
+        qa.appendChild(eq);
+      }
+      qa.appendChild(groupBtn('right', q.right));
+      qa.style.gap = q.choices.length > 2 ? '36px' : '90px';
+      return;
+    } else if (q.type === 'bigger') {
+      // 🐘 = which is bigger, 🐭 = which is smaller
+      qa.appendChild(el('div', 'hint-pic', q.ask === 'bigger' ? '🐘' : '🐭'));
+      numberAnswers();
+    } else if (q.type === 'next' || q.type === 'missing' || q.type === 'numpattern') {
+      qa.appendChild(sequenceEl(q.seq));
+      numberAnswers();
+    } else if (q.type === 'change') {
+      qa.appendChild(changeEl());
+      numberAnswers();
+    } else if (q.type === 'quick') {
+      qa.appendChild(diceEl(q.n));
+      flashDice();
+      numberAnswers();
+    } else if (q.type === 'pattern') {
+      const row = el('div', 'pattern-row');
+      q.seq.forEach((p) => row.appendChild(el('span', 'pat', p)));
+      row.appendChild(el('div', 'qmark small', '?'));
+      qa.appendChild(row);
+      q.choices.forEach((c) => an.appendChild(answerBtn(c, el('div', 'pat-choice', c))));
+    } else if (q.type === 'parity') {
+      const t = el('div', 'parity-q');
+      t.appendChild(el('div', 'numeral', String(q.n)));
+      t.appendChild(pairsEl(q.n));
+      qa.appendChild(t);
+      // Even: everyone has a buddy. Odd: one is left alone.
+      an.appendChild(answerBtn('even', pairsEl(4, 'icon')));
+      an.appendChild(answerBtn('odd', pairsEl(3, 'icon')));
     } else if (q.type === 'match') {
       const big = el('div', 'numeral', String(q.n));
       big.style.fontSize = '190px';
@@ -245,6 +294,88 @@
       qa.appendChild(el('div', 'qmark', '?'));
       q.choices.forEach((c) => an.appendChild(answerBtn(c, numberWithDots(c, 'term'))));
     }
+  }
+
+  // Objects scattered around (harder to count than neat rows).
+  function scatterEl(n, emoji) {
+    const box = el('div', 'scatter');
+    const cols = 7, rows = 3, cw = 80, ch = 84;
+    const cells = L.shuffle(Math.random, Array.from({ length: cols * rows }, (_, i) => i)).slice(0, n);
+    cells.forEach((c) => {
+      const o = el('span', 'obj', emoji);
+      o.style.left = (16 + (c % cols) * cw + Math.random() * 18) + 'px';
+      o.style.top = (10 + Math.floor(c / cols) * ch + Math.random() * 14) + 'px';
+      o.style.rotate = Math.round(Math.random() * 40 - 20) + 'deg';
+      box.appendChild(o);
+    });
+    return box;
+  }
+
+  // 2, 3, 4, ?  — each number with its dots underneath.
+  function sequenceEl(seq) {
+    const row = el('div', 'seq-row');
+    seq.forEach((n, i) => {
+      if (i) row.appendChild(el('span', 'seq-gap', '›'));
+      if (n === null) { row.appendChild(el('div', 'qmark', '?')); return; }
+      const c = el('div', 'seq-card');
+      c.appendChild(el('div', 'numeral', String(n)));
+      c.appendChild(dotsEl(n, 'mini'));
+      row.appendChild(c);
+    });
+    return row;
+  }
+
+  // A group; after a moment one more arrives (flies in) or one goes away (hops off with ✕).
+  function changeEl() {
+    const end = q.n + q.dir;
+    const box = objectsEl(q.n, q.item, { size: 64, cols: Math.min(5, Math.max(q.n, end)) });
+    box.classList.add('change-box');
+    setTimeout(() => {
+      if (!box.isConnected) return;
+      if (q.dir > 0) {
+        const o = el('span', 'obj arrive', q.item);
+        o.style.fontSize = '64px';
+        box.appendChild(o);
+      } else {
+        const objs = box.querySelectorAll('.obj');
+        const last = objs[objs.length - 1];
+        last.style.setProperty('--d', '0s');
+        last.classList.add('away');
+      }
+    }, 900);
+    return box;
+  }
+
+  // Dots like a dice face. Shown for a moment, then covered (🙈). 🔊 shows them again.
+  const DICE = { 1: [4], 2: [0, 8], 3: [0, 4, 8], 4: [0, 2, 6, 8], 5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8] };
+  function diceEl(n) {
+    const d = el('div', 'dice');
+    d.id = 'dice';
+    for (let i = 0; i < 9; i++) d.appendChild(el('span', DICE[n].indexOf(i) !== -1 ? 'pip' : 'pip none'));
+    d.appendChild(el('div', 'dice-cover', '🙈'));
+    return d;
+  }
+  let diceTimer = null;
+  function flashDice() {
+    const d = $('dice');
+    if (!d) return;
+    clearTimeout(diceTimer);
+    d.classList.remove('covered');
+    diceTimer = setTimeout(() => d.classList.add('covered'), 2200);
+  }
+
+  // Dots in pairs (buddies). An odd number leaves one dot without a buddy.
+  function pairsEl(n, cls) {
+    const box = el('div', 'pairs' + (cls ? ' ' + cls : ''));
+    for (let i = 0; i < Math.ceil(n / 2); i++) {
+      const col = el('div', 'pair');
+      col.appendChild(el('span', 'dot'));
+      const alone = 2 * i + 1 >= n;
+      col.appendChild(el('span', alone ? 'dot missing' : 'dot'));
+      if (alone) col.classList.add('alone');
+      box.appendChild(col);
+    }
+    return box;
   }
 
   // One side of a + sum: the number with matching objects or dots.
@@ -767,7 +898,7 @@
     });
     $('btn-parent').addEventListener('click', () => openGate('parent'));
     $('btn-home').addEventListener('click', () => { if (window.speechSynthesis) speechSynthesis.cancel(); goProfiles(false); });
-    $('btn-say').addEventListener('click', () => { if (q) Voice.say(q.say); });
+    $('btn-say').addEventListener('click', () => { if (q) { Voice.say(q.say); if (q.type === 'quick') flashDice(); } });
     $('btn-again').addEventListener('click', () => startRound(profile));
     $('btn-done-home').addEventListener('click', () => goProfiles(true));
     $('btn-gate-cancel').addEventListener('click', () => { gate = null; goProfiles(false); });
