@@ -58,6 +58,9 @@
     return g;
   }
 
+  // Shared with sims-2.js and later simulation files.
+  GS.simKit = { s, svgBox, text, loop, controls, btn, seg, message, arrow };
+
   // =====================================================================
   // 🪐 Solar system: planets go around the Sun, the Moon goes around the Earth.
   // =====================================================================

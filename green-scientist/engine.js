@@ -7,7 +7,7 @@
   'use strict';
 
   // Keep in sync with CACHE_VERSION in sw.js (tests check this).
-  const VERSION = '1.0.0';
+  const VERSION = '1.1.0';
   const STORE = 'green-scientist:v1';
 
   const modules = [];

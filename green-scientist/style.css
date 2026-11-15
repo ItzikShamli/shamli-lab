@@ -231,3 +231,8 @@ a { color: inherit; }
 @keyframes fall { to { transform: translateY(110vh) rotate(720deg); } }
 @media (orientation: landscape) and (min-width: 700px) { .sim-svg { max-height: 50vh; } }
 @media (orientation: landscape) and (max-height: 500px) { .sim-svg { max-height: 70vh; } }
+
+/* v1.1: dry ice and light */
+.sim-sub { margin: 22px 0 8px; font-size: 1.1em; }
+canvas.kaleido { display: block; width: 100%; max-width: 520px; height: auto; margin: 0 auto; border-radius: 50%; touch-action: none; }
+@media (orientation: landscape) and (min-width: 700px) { canvas.kaleido { max-width: 50vh; } }
