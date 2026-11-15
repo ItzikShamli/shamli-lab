@@ -266,3 +266,59 @@ input, select { -webkit-user-select: text; user-select: text; font: inherit; }
 .sheet-box { background: #f4f6fb; border-radius: 24px; padding: 20px 24px; width: min(640px, 90vw); max-height: 85vh; overflow-y: auto; font-size: 20px; }
 .sheet-box h2 { margin: 4px 0 14px; }
 .hidden { display: none !important; }
+
+/* ---------- Take-away picture (v1.1) ---------- */
+.sub-wrap { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+.sub-eq { display: flex; align-items: center; gap: 26px; }
+.sub-eq .numeral { font-size: 104px; }
+.sub-eq .op { font-size: 90px; }
+.sub-eq .qmark { width: 120px; height: 120px; font-size: 80px; }
+.sub-eq .away-num { color: var(--red); }
+.sub-pic {
+  display: flex; align-items: center; gap: 14px;
+  background: rgba(255,255,255,.8); border-radius: 32px; padding: 14px;
+}
+.sub-pic .objects, .sub-pic .frames.q .frame { background: none; }
+.sub-pic .objects { padding: 6px 10px; }
+.sub-pic .away-box { border: 5px dashed var(--red); border-radius: 24px; padding: 6px 10px; }
+.sub-pic .frames.away-box { padding: 6px; }
+.obj.away, .dot.away { position: relative; animation: takeAway .7s ease-in forwards; animation-delay: var(--d, 1s); }
+.obj.away::after, .dot.away::after {
+  content: "✕"; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  color: var(--red); font-weight: 900; opacity: 0;
+  animation: showX .3s ease-out forwards; animation-delay: calc(var(--d, 1s) + .45s);
+}
+.obj.away::after { font-size: 1.1em; }
+.dot.away::after { font-size: 24px; }
+@keyframes takeAway {
+  0% { transform: none; opacity: 1; }
+  45% { transform: translateY(-22px) scale(1.15); opacity: 1; }
+  100% { transform: none; opacity: .35; }
+}
+@keyframes showX { to { opacity: 1; } }
+
+/* ---------- Prize list on the end-of-round screen ---------- */
+.trophy { font-size: 120px; }
+.done-box { gap: 18px; }
+.prizes { display: flex; gap: 28px; }
+.prize {
+  width: 190px; padding: 12px 14px 14px; border-radius: 28px; background: rgba(255,255,255,.9);
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  box-shadow: 0 6px 0 var(--shadow);
+}
+.prize-pic { font-size: 64px; line-height: 1.05; }
+.prize-bar { width: 100%; height: 18px; border-radius: 9px; background: #e3edf7; overflow: hidden; }
+.prize-fill { height: 100%; border-radius: 9px; background: linear-gradient(90deg, var(--gold), #ffdf6e); transition: width .8s; }
+.prize-price { display: flex; align-items: center; gap: 6px; font-size: 26px; font-weight: 800; }
+.prize.ready { background: #fff7cf; box-shadow: 0 6px 0 var(--gold-d), 0 0 0 5px var(--gold); animation: bounce 1.4s ease-in-out infinite; }
+.prize.ready .prize-fill { background: var(--green); }
+.hint.warn { color: #b42323; font-weight: 600; }
+/* Take-away up to 20: keep the picture short so it never reaches the answer buttons */
+.sub-pic .frames.q .dot { width: 26px; height: 26px; }
+.sub-pic .frames.q .frame { gap: 6px; padding: 5px; }
+.sub-pic .frames.q { gap: 6px; }
+.sub-wrap.teens .sub-eq .numeral { font-size: 84px; }
+.sub-wrap.teens .sub-eq .op { font-size: 72px; }
+.sub-wrap.teens .sub-eq .qmark { width: 100px; height: 100px; font-size: 66px; }
+.sub-wrap.teens { gap: 8px; }
+.sub-pic .frame.second .dot:not(.empty) { background: var(--dot); }
