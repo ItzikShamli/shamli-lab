@@ -3,7 +3,7 @@
   'use strict';
 
   // Keep in sync with CACHE_VERSION in sw.js (tests check this).
-  const APP_VERSION = '1.3.0';
+  const APP_VERSION = '1.3.1';
 
   const L = window.FWM;
   const $ = (id) => document.getElementById(id);
@@ -219,23 +219,17 @@
       qa.appendChild(q.messy ? scatterEl(q.n, q.item) : objectsEl(q.n, q.item));
       numberAnswers();
     } else if (q.type === 'compare') {
-      // [left group]  (=)  [right group]
+      // [left group]   [right group]
       const groupBtn = (side, n) => {
-        const g = el('button', 'group' + (q.choices.length > 2 ? ' narrow' : ''));
+        const g = el('button', 'group');
         g.setAttribute('aria-label', side);
         g.appendChild(objectsEl(n, q.item, { size: n > 5 ? 50 : 60 }));
         g.addEventListener('click', () => answer(g, side));
         return g;
       };
       qa.appendChild(groupBtn('left', q.left));
-      if (q.choices.indexOf('same') !== -1) {
-        const eq = el('button', 'group eq', '=');
-        eq.setAttribute('aria-label', 'same');
-        eq.addEventListener('click', () => answer(eq, 'same'));
-        qa.appendChild(eq);
-      }
       qa.appendChild(groupBtn('right', q.right));
-      qa.style.gap = q.choices.length > 2 ? '36px' : '90px';
+      qa.style.gap = '90px';
       return;
     } else if (q.type === 'bigger') {
       // 🐘 = which is bigger, 🐭 = which is smaller

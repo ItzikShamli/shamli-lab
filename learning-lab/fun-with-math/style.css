@@ -341,10 +341,6 @@ input, select { -webkit-user-select: text; user-select: text; font: inherit; }
 #icon-sheet { z-index: 90; }
 
 /* ---------- More kinds of questions (v1.3) ---------- */
-.group.narrow { width: 380px; }
-.group.eq {
-  width: 140px; min-height: 140px; align-self: center; font-size: 96px; font-weight: 900; color: var(--blue);
-}
 .hint-pic { font-size: 210px; line-height: 1; filter: drop-shadow(0 8px 0 rgba(0,0,0,.08)); }
 
 .scatter { position: relative; width: 600px; height: 270px; background: rgba(255,255,255,.75); border-radius: 32px; }
