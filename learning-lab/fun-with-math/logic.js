@@ -17,19 +17,19 @@
   // Each track is a list of stages, easiest first.
   // `types` may repeat a type to make it come up more often.
   // Options: addMax (biggest sum for little-kid adding), quickMax (biggest quick-look number),
-  // equal (compare can be "the same"), gap (smallest difference in compare), fewer / smaller
+  // gap (smallest difference in compare), fewer / smaller
   // (also ask for the smaller side/number), messy (scattered counting), patterns (picture
   // pattern kinds), steps (number-pattern steps).
   var TRACKS = {
     little: [
       { id: 'L1', max: 5, gap: 2, patterns: ['AB'],
         types: ['count', 'count', 'compare', 'match', 'bigger', 'next', 'pattern'] },
-      { id: 'L2', max: 7, gap: 2, equal: true, fewer: true, addMax: 5, quickMax: 4, patterns: ['AB'],
+      { id: 'L2', max: 7, gap: 2, fewer: true, addMax: 5, quickMax: 4, patterns: ['AB'],
         types: ['count', 'compare', 'match', 'bigger', 'next', 'pattern', 'change', 'add', 'quick'] },
-      { id: 'L3', max: 10, gap: 2, equal: true, fewer: true, smaller: true, addMax: 5, quickMax: 6,
+      { id: 'L3', max: 10, gap: 2, fewer: true, smaller: true, addMax: 5, quickMax: 6,
         patterns: ['AB', 'AAB', 'ABB'],
         types: ['count', 'compare', 'match', 'bigger', 'next', 'missing', 'pattern', 'change', 'add', 'quick'] },
-      { id: 'L4', max: 10, gap: 1, equal: true, fewer: true, smaller: true, messy: true, addMax: 5, quickMax: 6,
+      { id: 'L4', max: 10, gap: 1, fewer: true, smaller: true, messy: true, addMax: 5, quickMax: 6,
         patterns: ['AB', 'AAB', 'ABB', 'ABC'],
         types: ['count', 'compare', 'match', 'bigger', 'next', 'missing', 'pattern', 'change', 'add', 'quick'] }
     ],
@@ -141,26 +141,20 @@
     };
   }
 
-  // Two groups: which side has more (or fewer)? Later the sides can be the same → "=".
+  // Two groups: which side has more (or fewer)? The sides are never the same.
   function makeCompare(rng, stage) {
     var item = pick(rng, ITEMS);
     var ask = stage.fewer && rng() < 0.45 ? 'fewer' : 'more';
     var a = randInt(rng, 1, stage.max), b;
-    var same = stage.equal && rng() < 0.22;
-    if (same) {
-      b = a;
-    } else {
-      var minGap = stage.gap || 2, guard = 0;
-      do { b = randInt(rng, 1, stage.max); } while (Math.abs(a - b) < minGap && guard++ < 100);
-      if (a === b) b = a === 1 ? 2 : a - 1;
-    }
-    var answer = same ? 'same' : ((ask === 'more') === (a > b) ? 'left' : 'right');
-    var say = 'באיזה צד יש ' + (ask === 'more' ? 'יותר ' : 'פחות ') + item.many + '?';
-    if (stage.equal) say += ' ואם יש אותו דבר, לחצו על השווה.';
+    var minGap = stage.gap || 2, guard = 0;
+    do { b = randInt(rng, 1, stage.max); } while (Math.abs(a - b) < minGap && guard++ < 100);
+    if (a === b) b = a === 1 ? 2 : a - 1;
     return {
-      type: 'compare', ask: ask, item: item.e, left: a, right: b, answer: answer,
-      choices: stage.equal ? ['left', 'right', 'same'] : ['left', 'right'],
-      say: say, key: 'compare:' + ask + ':' + a + ':' + b
+      type: 'compare', ask: ask, item: item.e, left: a, right: b,
+      answer: (ask === 'more') === (a > b) ? 'left' : 'right',
+      choices: ['left', 'right'],
+      say: 'באיזה צד יש ' + (ask === 'more' ? 'יותר ' : 'פחות ') + item.many + '?',
+      key: 'compare:' + ask + ':' + a + ':' + b
     };
   }
 

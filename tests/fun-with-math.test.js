@@ -33,13 +33,11 @@ test('every question is valid, on every track and stage', () => {
         assert.notStrictEqual(q.key, prev, 'same question twice in a row');
         if (q.type === 'compare') {
           assert.ok(q.left >= 1 && q.left <= stage.max && q.right >= 1 && q.right <= stage.max);
-          if (q.left === q.right) { assert.ok(stage.equal); assert.strictEqual(q.answer, 'same'); }
-          else {
-            const moreSide = q.left > q.right ? 'left' : 'right';
-            assert.strictEqual(q.answer, q.ask === 'more' ? moreSide : (moreSide === 'left' ? 'right' : 'left'));
-            assert.ok(Math.abs(q.left - q.right) >= (stage.gap || 2) || stage.max < 3);
-          }
-          assert.strictEqual(q.choices.length, stage.equal ? 3 : 2);
+          assert.notStrictEqual(q.left, q.right, 'sides are never the same');
+          const moreSide = q.left > q.right ? 'left' : 'right';
+          assert.strictEqual(q.answer, q.ask === 'more' ? moreSide : (moreSide === 'left' ? 'right' : 'left'));
+          assert.ok(Math.abs(q.left - q.right) >= (stage.gap || 2) || stage.max < 3);
+          assert.deepStrictEqual(q.choices, ['left', 'right']);
           if (q.ask === 'fewer') assert.ok(stage.fewer);
         } else if (q.type === 'parity') {
           assert.deepStrictEqual(q.choices, ['even', 'odd']);

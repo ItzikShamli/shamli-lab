@@ -41,7 +41,7 @@ Each game is its own small app in its own folder. Don't make one big game that d
 - **Profiles (decided):** the game is meant to be shared, so there are no built-in kids. Anyone can create their own profile: enter a name, pick a picture, and pick a starting level. Creating a profile is an adult task, behind the adult math question.
 - Each kid taps their own picture to start. That picks their level and their coin jar.
 - Little level (about age 4), 4 steps, new kinds open up as they go:
-  - how many? (later also scattered, not in rows) · which side has more / fewer / the same (=) · find the dots for a number
+  - how many? (later also scattered, not in rows) · which side has more / fewer · find the dots for a number
   - which number is bigger / smaller (🐘 / 🐭) · what number comes next · which number is missing
   - one more came / one went away · adding up to 5 with pictures · quick look (dice dots for 2 seconds, then 🙈)
   - picture patterns (AB, AAB, ABB, ABC)
@@ -68,6 +68,7 @@ Each game is its own small app in its own folder. Don't make one big game that d
 - The sum is on top. Below it is ONE picture of the first number: the ones that stay, and the ones taken away in a red dashed box (red matches the red number being taken away). After a moment the taken-away ones hop and fade with a red ✕, so what's left is easy to count.
 
 ## Decisions log
+- v1.3.1: dropped the "same (=)" question; too hard to explain to a 4-year-old and the answer was too obvious.
 - v1.3 (same PR as 1.2): many more kinds of questions for both levels (see above).
 - v1.2: half coin on the second try, none after that; prize pictures can be any emoji or a photo.
 - v1.1: voice in Hebrew (parent screens stay English); prize list 100/200/300 as prices; clearer take-away picture.
