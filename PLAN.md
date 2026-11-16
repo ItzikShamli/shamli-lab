@@ -99,5 +99,7 @@ Each game is its own small app in its own folder. Don't make one big game that d
   2. Boomerang: Newton's third law (action/reaction, helicopter tail rotor, boomerang)
   3. Dry ice (states of matter, CO₂, sublimation, fog and cloud bubbles, safety). Home experiments never use dry ice.
   4. Light (why light matters, how we see, mirrors and angles, colors, invisible light, kaleidoscope)
+  5. Vacuum (air pressure, vacuum and low pressure, candle in a jar, plunger, lungs, Venturi ping-pong cannon, straw challenge, astronaut suit)
+  6. Electric circuit (atoms, nucleus and electrons, electricity as electrons moving from crowded to less crowded, closed and open circuits, bulb and buzzer, conductors and insulators, safety)
 - Modules link to each other where it fits (Mars has dry ice at its poles; Newton also studied light; plants use CO₂ and light).
 - **Adding next week's class:** copy a file in `green-scientist/modules/`, change the content (new simulations go in a new `sims-N.js`), add its `<script>` line to `green-scientist/index.html` and its path to `FILES` in `green-scientist/sw.js`, bump the version (`engine.js` + `sw.js`), then run `node tests/green-scientist.test.js`.
