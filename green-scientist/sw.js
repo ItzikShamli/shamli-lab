@@ -2,7 +2,7 @@
  * IMPORTANT: bump CACHE_VERSION on every release (and VERSION in engine.js to match),
  * and list every new module file in FILES.
  */
-const CACHE_VERSION = '1.1.0';
+const CACHE_VERSION = '1.2.0';
 const CACHE_NAME = 'green-scientist-' + CACHE_VERSION;
 const PHOTOS = 'green-scientist-photos'; // NASA photos, kept across versions
 
@@ -13,10 +13,13 @@ const FILES = [
   './engine.js',
   './sims.js',
   './sims-2.js',
+  './sims-3.js',
   './modules/01-space-mars.js',
   './modules/02-newton-boomerang.js',
   './modules/03-dry-ice.js',
   './modules/04-light.js',
+  './modules/05-vacuum.js',
+  './modules/06-circuit.js',
   './manifest.webmanifest',
   './icons/icon-192.png',
   './icons/icon-512.png',
